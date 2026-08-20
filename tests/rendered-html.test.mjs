@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(path = "/") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(`http://localhost${path}`, {
       headers: { accept: "text/html" },
     }),
     {
@@ -23,32 +23,74 @@ async function render() {
   );
 }
 
-test("server-renders the supervision tender radar", async () => {
+test("server-renders the public landing page without the workbench", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>监理招标信息雷达<\/title>/);
+  assert.match(html, /<title>标看看｜监理标讯助手<\/title>/);
+  assert.match(html, /帮监理企业更早发现/);
+  assert.match(html, /隐私说明/);
+  assert.match(html, /ICP备案号待审核通过后公示/);
   assert.match(html, /项目雷达/);
-  assert.match(html, /通许县宏达大道/);
-  assert.match(html, /开封市公共资源交易中心/);
+  assert.match(html, /5 个已适配/);
+  assert.doesNotMatch(html, /正在读取真实扫描数据|搜索项目名称、招标人或代理机构/);
+  assert.doesNotMatch(html, /河南省政府采购网|河南兴达工程咨询官网/);
+  assert.doesNotMatch(html, /模拟发送|演示数据模式/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|react-loading-skeleton/i);
 });
 
+test("server-renders the project radar as an independent route", async () => {
+  const response = await render("/radar");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  const body = (html.split("</head><body>")[1] || html).split("<script")[0];
+  assert.match(html, /项目雷达/);
+  assert.match(html, /正在读取真实扫描数据/);
+  assert.match(html, /搜索项目名称、招标人或代理机构/);
+  assert.match(html, /截止时间由近到远/);
+  assert.match(html, /aria-haspopup="listbox"/);
+  assert.equal((html.match(/aria-haspopup="listbox"/g) || []).length, 3);
+  assert.doesNotMatch(body, /真实扫描已接入|每日汇总生成于/);
+  assert.doesNotMatch(body, /帮监理企业更早发现|隐私说明/);
+});
+
+test("server-renders system management as an independent route", async () => {
+  const response = await render("/radar/admin");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  const body = (html.split("</head><body>")[1] || html).split("<script")[0];
+  assert.match(html, /信息源管理/);
+  assert.match(html, /添加候选来源/);
+  assert.doesNotMatch(body, /帮监理企业更早发现|隐私说明/);
+});
+
 test("removes starter artifacts and ships product metadata", async () => {
-  const [page, layout, packageJson] = await Promise.all([
+  const [page, layout, styles, packageJson] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /监理招标雷达/);
-  assert.match(page, /企业微信提醒/);
+  assert.match(page, /标看看/);
   assert.match(page, /信息源管理/);
-  assert.match(layout, /title:\s*"监理招标信息雷达"/);
-  assert.match(layout, /\/og\.png/);
+  assert.match(page, /首次发现时间/);
+  assert.match(page, /扫描时间/);
+  assert.match(page, /更新时间/);
+  assert.match(page, /添加后不会立即抓取/);
+  assert.match(page, /扫描成功/);
+  assert.match(page, /biaokankan-project-sort-v1/);
+  assert.match(page, /localStorage\.setItem\(sortStorageKey, value\)/);
+  assert.match(page, /function SelectMenu/);
+  assert.match(page, /role="listbox"/);
+  assert.match(page, /className="select-native"/);
+  assert.match(page, /label="来源类型"/);
+  assert.match(styles, /backdrop-filter: blur\(10px\) saturate\(125%\)/);
+  assert.match(styles, /\.select-native \{ display: flex; \}/);
+  assert.doesNotMatch(page, /fallbackProjects|ReminderCenter|机会评分/);
+  assert.match(layout, /title:\s*"标看看｜监理标讯助手"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", import.meta.url)));
-  await access(new URL("../public/og.png", import.meta.url));
 });

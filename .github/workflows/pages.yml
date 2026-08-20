@@ -1,9 +1,11 @@
-name: Deploy public demo
+name: Refresh data and deploy
 
 on:
   push:
     branches: [main, feature/github-pages-public-demo]
   workflow_dispatch:
+  schedule:
+    - cron: "30 23 * * *"
 
 permissions:
   contents: read
@@ -17,6 +19,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -31,6 +34,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Refresh tender data
+        env:
+          TENDER_PREVIOUS_SNAPSHOT_URL: https://octopusgump.github.io/biaokankan/data/radar.json
+        run: pnpm crawl
 
       - name: Build static site
         run: pnpm build:pages

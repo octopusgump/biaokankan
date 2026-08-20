@@ -10,7 +10,7 @@ export PATH="$RUNTIME_DIR/bin/fallback:$RUNTIME_DIR/node/bin:/usr/local/bin:/usr
 
 cd "$PROJECT_DIR" || exit 1
 
-if [ ! -x "$RUNTIME_DIR/node/bin/node" ] || [ ! -x "$RUNTIME_DIR/bin/fallback/pnpm" ]; then
+if [ ! -x "$RUNTIME_DIR/node/bin/node" ]; then
   echo "无法找到网站运行环境，请回到 Codex 让我帮你修复。"
   echo
   read -r -p "按回车键关闭窗口…"
@@ -47,4 +47,4 @@ echo
   done
 ) &
 
-exec pnpm dev
+exec "$RUNTIME_DIR/node/bin/node" "$PROJECT_DIR/node_modules/vinext/dist/cli.js" dev
