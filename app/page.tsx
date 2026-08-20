@@ -333,25 +333,19 @@ export default function Home() {
               </button>
             </header>
 
-            <section className="summary-grid" aria-label="今日概览">
-              <button onClick={() => setRadarTab("today")} className={radarTab === "today" ? "selected" : ""}>
-                <span>今日新增</span><strong>5</strong><small>较昨日增加 2 个</small><i>查看项目 →</i>
+            <section className="summary-grid" role="tablist" aria-label="项目概览与分组">
+              <button role="tab" aria-selected={radarTab === "today"} onClick={() => setRadarTab("today")} className={radarTab === "today" ? "selected" : ""}>
+                <span>今日新增</span><strong>5</strong><small>较昨日增加 2 个</small>
               </button>
-              <button onClick={() => setRadarTab("upcoming")} className={`warning ${radarTab === "upcoming" ? "selected" : ""}`}>
-                <span>3 天内截止</span><strong>2</strong><small>其中 1 个明日截止</small><i>立即处理 →</i>
+              <button role="tab" aria-selected={radarTab === "upcoming"} onClick={() => setRadarTab("upcoming")} className={`warning ${radarTab === "upcoming" ? "selected" : ""}`}>
+                <span>3 天内截止</span><strong>2</strong><small>其中 1 个明日截止</small>
               </button>
-              <button onClick={() => setRadarTab("all")} className={radarTab === "all" ? "selected" : ""}>
-                <span>全部项目</span><strong>28</strong><small>来自 6 个信息源</small><i>浏览全部 →</i>
+              <button role="tab" aria-selected={radarTab === "all"} onClick={() => setRadarTab("all")} className={radarTab === "all" ? "selected" : ""}>
+                <span>全部项目</span><strong>28</strong><small>来自 6 个信息源</small>
               </button>
             </section>
 
             <section className="project-panel">
-              <div className="project-tabs" role="tablist" aria-label="项目分组">
-                <button role="tab" aria-selected={radarTab === "today"} onClick={() => setRadarTab("today")}>今日新增 <b>5</b></button>
-                <button role="tab" aria-selected={radarTab === "upcoming"} onClick={() => setRadarTab("upcoming")}>即将截止 <b>2</b></button>
-                <button role="tab" aria-selected={radarTab === "all"} onClick={() => setRadarTab("all")}>全部项目 <b>28</b></button>
-              </div>
-
               <div className="filters">
                 <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="搜索项目" placeholder="搜索项目名称、招标人或代理机构" /></label>
                 <label><span>信息来源</span><select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}><option>全部来源</option>{[...new Set(projects.map((project) => project.source))].map((source) => <option key={source}>{source}</option>)}</select></label>
@@ -545,7 +539,7 @@ function ScanStatus({ sources }: { sources: Source[] }) {
   return (
     <>
       <section className="status-summary">
-        <article><span>本次扫描耗时</span><strong>6 分 42 秒</strong><small>今日 08:00–08:12</small></article>
+        <article><span>本次扫描耗时</span><strong>6 分 42 秒</strong><small>今日 08:00-08:12</small></article>
         <article><span>扫描信息源</span><strong>{sources.filter((source) => source.enabled).length} / {sources.length}</strong><small>1 个来源已停用</small></article>
         <article><span>读取公告</span><strong>186 条</strong><small>识别监理相关 8 条</small></article>
         <article><span>新增项目</span><strong>5 个</strong><small>合并重复记录 3 条</small></article>
