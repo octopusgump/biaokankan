@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText } from "../crawler/core.mjs";
+import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText, retainProjectWithLatestLinkState } from "../crawler/core.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
 
 const source = {
@@ -42,16 +42,18 @@ test("extracts the PRD sample fields without guessing", () => {
   assert.equal(project.linkStatus, "available");
 });
 
-test("uses only the five confirmed public-resource sources", () => {
+test("uses only the seven confirmed public-resource sources", () => {
   assert.deepEqual(SOURCE_DEFINITIONS.map((item) => item.name), [
     "开封市公共资源交易中心",
     "郑州市公共资源交易中心",
     "河南省公共资源交易中心",
     "新乡市公共资源交易中心",
     "洛阳市公共资源交易中心",
+    "商丘市公共资源交易中心",
+    "郑州航空港经济综合实验区公共资源交易中心",
   ]);
   assert.equal(SOURCE_DEFINITIONS.some((item) => /政府采购网|河南兴达/.test(item.name)), false);
-  assert.equal(new Set(SOURCE_DEFINITIONS.map((item) => item.entry)).size, 5);
+  assert.equal(new Set(SOURCE_DEFINITIONS.map((item) => item.entry)).size, 7);
 });
 
 test("deadline thresholds match the product rules", () => {
@@ -60,6 +62,26 @@ test("deadline thresholds match the product rules", () => {
   assert.equal(deadlinePresentation("2026-08-23 09:30", now).deadlineState, "warning");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now).deadlineState, "expired");
   assert.equal(deadlinePresentation(null, now).deadlineState, "pending");
+});
+
+test("retained projects never keep a stale available-link claim after a failed verification", () => {
+  const project = {
+    originalUrl: "https://example.test/project/1",
+    linkStatus: "available",
+    lastVerifiedAt: "2026-08-19 07:30",
+  };
+  const retained = retainProjectWithLatestLinkState(project, {
+    result: "失败",
+    listAvailable: false,
+    homeAvailable: false,
+    lastVerifiedAt: "2026-08-20 07:30",
+    lastError: "公告列表返回 HTTP 503",
+  });
+
+  assert.equal(retained.originalUrl, project.originalUrl);
+  assert.equal(retained.linkStatus, "source_unavailable");
+  assert.equal(retained.lastVerifiedAt, "2026-08-20 07:30");
+  assert.equal(retained.linkFailureReason, "公告列表返回 HTTP 503");
 });
 
 test("only supervision opportunities pass the semantic gate", () => {

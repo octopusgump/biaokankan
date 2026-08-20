@@ -277,6 +277,23 @@ export function deadlinePresentation(deadline, now = new Date()) {
   return { deadlineShort, remaining: `剩余 ${days} 天`, deadlineState: "normal" };
 }
 
+export function retainProjectWithLatestLinkState(project, source) {
+  if (!source || source.result === "成功") return project;
+  const listAvailable = source.listAvailable === true;
+  const homeAvailable = source.homeAvailable === true;
+  const hasFallback = listAvailable || homeAvailable;
+  return {
+    ...project,
+    listAvailable,
+    homeAvailable,
+    linkStatus: hasFallback ? "original_unavailable" : "source_unavailable",
+    lastVerifiedAt: source.lastVerifiedAt || source.lastScan || project.lastVerifiedAt,
+    linkFailureReason: source.result === "失败" && source.lastError
+      ? source.lastError
+      : "本次扫描未能重新验证该项目的原公告",
+  };
+}
+
 export function extractProject({ title, html, text: providedText, url, publishedAt, source, originalAvailable = true, linkFailureReason = null }, now = new Date()) {
   const text = flattenText(providedText || html);
   if (!isSupervisionText(`${title} ${text}`)) return null;

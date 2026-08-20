@@ -69,6 +69,31 @@ export const SOURCE_DEFINITIONS = [
     category: "003001002",
     cnum: "001",
   },
+  {
+    id: 7,
+    key: "shangqiu",
+    name: "商丘市公共资源交易中心",
+    entry: "https://ggzyjy.shangqiu.gov.cn/",
+    listEntry: "https://ggzyjy.shangqiu.gov.cn/HNSQ/TradeCenter/tradeList.do?Deal_Type=Deal_Type1&Notice_Type=1",
+    region: "河南省 · 商丘市",
+    type: "公共资源交易中心",
+    adapter: "shangqiu-html",
+  },
+  {
+    id: 8,
+    key: "zhengzhou-airport",
+    name: "郑州航空港经济综合实验区公共资源交易中心",
+    entry: "http://www.zzhkgggzy.cn:18082/",
+    listEntry: "http://www.zzhkgggzy.cn:18082/jyxx/001001/transaction.html",
+    region: "河南省 · 郑州航空港区",
+    type: "公共资源交易中心",
+    adapter: "epoint-search",
+    category: "001001003",
+    cnum: "001",
+    wd: "监理",
+    fields: "title",
+    noParticiple: "0",
+  },
 ];
 
 export async function scanSource(source, now = new Date()) {
@@ -77,6 +102,7 @@ export async function scanSource(source, now = new Date()) {
   else if (source.adapter === "kaifeng-html") result = await scanKaifeng(source, now);
   else if (source.adapter === "henan-public-api") result = await scanHenanPublic(source, now);
   else if (source.adapter === "xinxiang-html") result = await scanXinxiang(source, now);
+  else if (source.adapter === "shangqiu-html") result = await scanShangqiu(source, now);
   else throw new Error(`${source.name} 没有可用适配器`);
 
   let listAvailable = true;
@@ -191,6 +217,62 @@ async function scanXinxiang(source, now) {
   return scanHtmlEntries(source, entries, now);
 }
 
+async function scanShangqiu(source, now) {
+  const endpoint = new URL("/HNSQ/TradeCenter/ColTableInfo.do?", source.entry).toString();
+  const html = await fetchText(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+      referer: source.listEntry,
+      "x-requested-with": "XMLHttpRequest",
+    },
+    body: new URLSearchParams({
+      projectName: "监理",
+      date: "1month",
+      begin_time: "",
+      end_time: "",
+      begin_time2: "",
+      end_time2: "",
+      begin_price: "",
+      end_price: "",
+      dealType: "Deal_Type1",
+      noticType: "1",
+      area: "",
+      huanJie: "NOTICE",
+      pageIndex: "1",
+    }).toString(),
+  });
+  let entries = dedupeBy(
+    extractAnchors(html, source.entry)
+      .filter((item) => isSupervisionText(item.title || item.text || ""))
+      .filter((item) => !/(?:招标计划|中标|结果|候选人|合同|终止|废标)/.test(item.title || ""))
+      .map(withPublishedDate)
+      .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now)),
+    (item) => item.url,
+  );
+  if (!entries.length) {
+    const fallbackHtml = await fetchText(new URL("/HNSQ/Home/noticeInfo_FJSZ.do", source.entry), {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        referer: source.listEntry,
+        "x-requested-with": "XMLHttpRequest",
+      },
+      body: new URLSearchParams({ ggmc: "监理" }).toString(),
+    });
+    entries = dedupeBy(
+      extractAnchors(fallbackHtml, source.entry)
+        .filter((item) => /\/HNSQ\/ContentController\/content\.do/i.test(new URL(item.url).pathname))
+        .filter((item) => /(?:huanjie=NOTICE|noticeType=1)(?:&|$)/i.test(new URL(item.url).search.slice(1)))
+        .filter((item) => !/(?:中标|结果|候选人|暂停|延期|终止|废标|变更)/.test(item.title || ""))
+        .map(withPublishedDate)
+        .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now)),
+      (item) => item.url,
+    );
+  }
+  return scanHtmlEntries(source, entries, now);
+}
+
 async function scanHtmlEntries(source, entries, now) {
   const projects = [];
   const issues = [];
@@ -220,10 +302,10 @@ async function scanEpointSource(source, now) {
     rn: 30,
     sdt: "",
     edt: "",
-    wd: source.key === "zhengzhou" ? "%20" : "",
+    wd: source.wd ?? (source.key === "zhengzhou" ? "%20" : ""),
     inc_wd: "",
     exc_wd: "",
-    fields: source.key === "zhengzhou" ? "title" : "",
+    fields: source.fields ?? (source.key === "zhengzhou" ? "title" : ""),
     cnum: source.cnum,
     sort: source.key === "zhengzhou" ? '{"webdate":"0"}' : '{"webdate":"0","id":"0"}',
     ssort: source.key === "zhengzhou" ? "title" : "",
@@ -239,7 +321,7 @@ async function scanEpointSource(source, now) {
     statistics: null,
     unionCondition: null,
     accuracy: "",
-    noParticiple: "1",
+    noParticiple: source.noParticiple || "1",
     searchRange: source.key === "zhengzhou" ? [] : null,
     isBusiness: "1",
     noWd: source.key === "luoyang" ? true : undefined,
