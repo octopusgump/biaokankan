@@ -24,7 +24,7 @@ export function PublicIntro() {
           <a href="#how-it-works">工作方式</a>
           <a href="#product-boundary">产品边界</a>
         </nav>
-        <a className="public-nav-action" href="./radar">进入项目雷达</a>
+        <a className="public-nav-action" href="./radar/">进入项目雷达</a>
       </header>
 
       <div className="public-hero" id="top">
@@ -33,7 +33,7 @@ export function PublicIntro() {
           <h1>帮监理企业更早发现<br />值得跟进的标讯。</h1>
           <p className="public-lead">每天巡检 5 个已接入的公共资源交易网站，把截止时间、项目规模和关键单位整理成一张表。所有项目都能回到自己的原公告核验。</p>
           <div className="public-actions">
-            <a className="public-primary" href="./radar">进入项目雷达</a>
+            <a className="public-primary" href="./radar/">进入项目雷达</a>
             <a className="public-secondary" href="#how-it-works">了解怎么工作</a>
           </div>
         </div>
@@ -100,7 +100,7 @@ export function PublicFooter() {
         <div className="public-footer-links">
           <a href="#how-it-works">工作方式</a>
           <a href="#product-boundary">产品边界</a>
-          <a href="./radar">项目雷达</a>
+          <a href="./radar/">项目雷达</a>
           <a href="#privacy">隐私说明</a>
           <a href="#terms">服务条款</a>
         </div>

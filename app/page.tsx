@@ -129,7 +129,11 @@ function DataMessage({ state, filtered, onRetry }: { state: DataState; filtered:
 
 function appHref(path: string) {
   const base = typeof window !== "undefined" && window.location.pathname.startsWith("/biaokankan/") ? "/biaokankan" : "";
-  return `${base}${path}`;
+  if (!base) return path;
+  const [pathname, query] = path.split("?");
+  const directoryRoutes = ["/radar", "/radar/admin", "/radar/project"];
+  const routedPath = directoryRoutes.includes(pathname) ? `${pathname}/` : pathname;
+  return `${base}${routedPath}${query ? `?${query}` : ""}`;
 }
 
 function SelectMenu<T extends string>({ label, value, options, onChange, variant = "filter" }: {
