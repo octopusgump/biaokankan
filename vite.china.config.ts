@@ -3,11 +3,11 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   root: "github-pages",
-  base: "/biaokankan/",
+  base: "/",
   publicDir: "../public",
   plugins: [react()],
   build: {
-    outDir: "../pages-dist",
+    outDir: "../china-dist",
     emptyOutDir: true,
   },
 });

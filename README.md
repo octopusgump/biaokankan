@@ -1,100 +1,60 @@
-# vinext-starter
+# 标看看｜监理标讯助手
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+帮监理企业更早发现值得跟进的标讯。网站集中展示真实扫描发现的监理项目、投标截止时间、招标人、代理机构与信息来源，并提供信息源管理和扫描异常查看能力。
 
-## Prerequisites
+## 产品文档
 
-- Node.js `>=22.13.0`
+- [首版 PRD](./docs/prd/PRD_001_监理招标信息雷达_首版.md)
+- [阿里云大陆部署与 ICP 备案执行方案](./docs/deployment/标看看_阿里云大陆部署与ICP备案执行方案.md)
+- [全部项目文档](./docs/README.md)
 
-## Quick Start
+## 本地运行
+
+需要 Node.js 22.13 或更高版本。仓库使用 pnpm 锁定依赖版本；已安装依赖时，日常只需运行启动命令。
 
 ```bash
-npm install
-npm run dev
-npm run build
+pnpm install
+pnpm run dev
 ```
 
-This starter does not use `wrangler.jsonc`.
+访问 `http://localhost:3000/`。
 
-## Included Shape
+## 真实扫描 MVP
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+本版只抓取五个已经适配的公开来源：河南省公共资源交易中心，以及开封、郑州、新乡和洛阳市公共资源交易中心。手动添加到管理后台的其他网址只保存为当前浏览器的“候选来源”，不会自动加入抓取范围。
 
-## Workspace Auth Headers
+```bash
+# 抓取公开公告并更新 public/data/radar.json
+pnpm run crawl
 
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+# 验证字段提取、截止状态和链接筛选
+pnpm run test:crawler
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+GitHub Pages 工作流每天北京时间 07:30 自动运行一次，也支持在 GitHub Actions 中手动触发。每次运行会：
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+1. 访问五个来源的公开公告列表或公开查询接口；
+2. 只保留语义明确的监理招标公告；
+3. 提取项目、标段、投资、截止时间、招标人和代理机构；
+4. 与上一次快照对比，生成新增、更新和异常记录；
+5. 构建静态页面并发布。单个来源失败时会保留该来源上次成功数据。
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+抓取结果使用稳定的 JSON 契约，由 `crawler/storage.mjs` 统一读写。后续接入数据库时，只需实现其中预留的 `DatabaseSnapshotStore`，并将 `TENDER_STORE` 设置为 `database`；前端和抓取适配器不需要改数据结构。当前刻意不引入数据库和常驻服务器，以便先验证五个来源的稳定性和字段质量。
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+## 构建
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+```bash
+# 完整应用构建
+pnpm run build
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+# 中国大陆服务器静态部署包
+pnpm run build:china
+```
 
-## Useful Commands
+国内部署包输出到 `china-dist`。ICP备案、域名和大陆服务器的准备步骤见[《国内上线与 ICP 备案清单》](./docs/deployment/国内上线与ICP备案清单.md)。
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+## 正式上线前
 
-## Learn More
+在 `app/site-config.ts` 填写营业执照主体全称、服务联系方式，以及审核通过后的 ICP 与公安备案信息。未取得备案号前不要填写虚假号码。
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+当前项目列表、链接状态和每日汇总来自真实公开网页抓取。本版不提供企业微信消息预览、模拟发送或真实推送。所有自动提取字段都应以原公告和招标文件为最终依据。

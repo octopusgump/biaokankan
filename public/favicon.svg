@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="标看看">
+  <rect x="4" y="4" width="56" height="56" rx="15" fill="#0d6b47"/>
+  <text
+    x="32"
+    y="41"
+    fill="#ffffff"
+    font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, sans-serif"
+    font-size="28"
+    font-weight="600"
+    text-anchor="middle"
+  >标</text>
+</svg>

@@ -1,0 +1,9 @@
+node_modules
+dist
+pages-dist
+china-dist
+.next
+.vinext
+.wrangler
+.git
+*.log

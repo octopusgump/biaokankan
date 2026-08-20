@@ -2,19 +2,20 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "监理招标信息雷达",
-  description: "面向建筑监理公司投标经理的招标信息工作台",
+  title: "标看看｜监理标讯助手",
+  description: "帮监理企业更早发现值得跟进的标讯。每天巡检 5 个已接入来源，整理真实项目、截止时间和原公告入口。",
+  icons: {
+    icon: "/favicon.svg",
+  },
   openGraph: {
-    title: "监理招标信息雷达",
-    description: "发现项目 · 看清截止 · 及时提醒",
+    title: "标看看｜监理标讯助手",
+    description: "帮监理企业更早发现值得跟进的标讯。",
     type: "website",
-    images: [{ url: "/og.png", width: 1733, height: 908, alt: "监理招标信息雷达" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "监理招标信息雷达",
-    description: "发现项目 · 看清截止 · 及时提醒",
-    images: ["/og.png"],
+    title: "标看看｜监理标讯助手",
+    description: "帮监理企业更早发现值得跟进的标讯。",
   },
 };
 
