@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { normalizeProjectTimeFields } from "../shared/project-time.mjs";
 import { siteConfig } from "./site-config";
 
 type PreviewProject = {
@@ -10,7 +11,9 @@ type PreviewProject = {
   investment: string;
   deadlineShort: string;
   remaining: string;
-  deadlineState: "normal" | "warning" | "danger" | "expired" | "pending";
+  deadlineState: "normal" | "reminder" | "urgent" | "expired" | "pending";
+  bidDeadline: string | null;
+  bidDeadlineStatus: "confirmed" | "document_required" | "pending";
   source: string;
 };
 
@@ -20,8 +23,10 @@ type PreviewSnapshot = {
   sources: unknown[];
   errors: unknown[];
   summary: {
+    summaryVersion: 2;
     newProjectCount: number;
-    expiringWithin3DaysCount: number;
+    urgentWithin7DaysCount: number;
+    reminderFrom8To14DaysCount: number;
     abnormalSourceCount: number;
   } | null;
 };
@@ -44,15 +49,29 @@ function formatGeneratedAt(value: string | null) {
   if (!value) return "等待首次扫描";
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "最近一次扫描";
-  return `${date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" })} ${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+  return `${date.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit" })} ${date.toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit", hour12: false })}`;
 }
 
 function ProductPreview({ snapshot, state }: { snapshot: PreviewSnapshot | null; state: PreviewState }) {
+  const [referenceNow, setReferenceNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = window.setInterval(() => setReferenceNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
   const projects = useMemo(() => {
     if (!snapshot) return [];
-    const active = snapshot.projects.filter((project) => project.deadlineState !== "expired");
-    return (active.length ? active : snapshot.projects).slice(0, 3);
-  }, [snapshot]);
+    const normalized = snapshot.projects.map((project) => normalizeProjectTimeFields(project, referenceNow) as PreviewProject);
+    const active = normalized.filter((project) => project.deadlineState !== "expired");
+    return (active.length ? active : normalized).slice(0, 3);
+  }, [referenceNow, snapshot]);
+  const deadlineCounts = useMemo(() => {
+    if (!snapshot) return { urgent: 0, reminder: 0 };
+    const normalized = snapshot.projects.map((project) => normalizeProjectTimeFields(project, referenceNow) as PreviewProject);
+    return {
+      urgent: normalized.filter((project) => project.deadlineState === "urgent").length,
+      reminder: normalized.filter((project) => project.deadlineState === "reminder").length,
+    };
+  }, [referenceNow, snapshot]);
 
   const statusMessage = state === "loading"
     ? "正在读取真实扫描数据"
@@ -98,8 +117,8 @@ function ProductPreview({ snapshot, state }: { snapshot: PreviewSnapshot | null;
       {state === "ready" && snapshot && (
         <>
           <div className="product-preview-summary" aria-label="扫描汇总">
-            <div><span>今日新增</span><strong>{snapshot.summary?.newProjectCount ?? 0}</strong></div>
-            <div><span>3 天内截止</span><strong>{snapshot.summary?.expiringWithin3DaysCount ?? 0}</strong></div>
+            <div><span>7天内紧急</span><strong>{deadlineCounts.urgent}</strong></div>
+            <div><span>8–14天提醒</span><strong>{deadlineCounts.reminder}</strong></div>
             <div><span>真实项目</span><strong>{snapshot.projects.length}</strong></div>
           </div>
           <div className="product-preview-list">

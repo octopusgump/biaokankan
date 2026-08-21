@@ -4,7 +4,7 @@ import test from "node:test";
 import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText, retainProjectWithLatestLinkState } from "../crawler/core.mjs";
 import { buildSummary } from "../crawler/summary.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
-import { documentAcquirePresentation, normalizeProjectTimeFields } from "../shared/project-time.mjs";
+import { classifyBidDeadline, documentAcquirePresentation, normalizeProjectTimeFields } from "../shared/project-time.mjs";
 
 const source = {
   name: "开封市公共资源交易中心",
@@ -38,7 +38,7 @@ test("extracts the PRD sample fields without guessing", () => {
   assert.equal(project.section, "第二标段");
   assert.equal(project.investment, "6,961.37 万元");
   assert.equal(project.deadline, "2026-08-25 09:30");
-  assert.equal(project.deadlineState, "normal");
+  assert.equal(project.deadlineState, "urgent");
   assert.equal(project.agency, "河南省开兴工程管理咨询有限公司");
   assert.equal(project.originalUrl, "http://www.kfsggzyjyw.cn/jzbtxx/81223.jhtml");
   assert.equal(project.linkStatus, "available");
@@ -238,12 +238,20 @@ test("uses the eighteen confirmed public-resource sources", () => {
 
 test("deadline thresholds match the product rules", () => {
   const now = new Date("2026-08-20T09:30:00+08:00");
-  assert.equal(deadlinePresentation("2026-08-21 09:30", now).deadlineState, "danger");
-  assert.equal(deadlinePresentation("2026-08-23 09:30", now).deadlineState, "warning");
+  assert.equal(deadlinePresentation("2026-08-21 09:30", now).deadlineState, "urgent");
+  assert.equal(deadlinePresentation("2026-08-28 09:30", now).deadlineState, "reminder");
+  assert.equal(deadlinePresentation("2026-09-04 09:30", now).deadlineState, "normal");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now).deadlineState, "expired");
   assert.equal(deadlinePresentation(null, now).deadlineState, "pending");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now, "document_required").deadlineState, "pending");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now, "document_required").remaining, "公告注明：见招标文件");
+
+  const sevenDayDeadline = "2026-08-27 09:30";
+  assert.equal(classifyBidDeadline(sevenDayDeadline, "confirmed", now).deadlineState, "urgent");
+  assert.equal(classifyBidDeadline(sevenDayDeadline, "confirmed", new Date(now.getTime() - 1)).deadlineState, "reminder");
+  const fourteenDayDeadline = "2026-09-03 09:30";
+  assert.equal(classifyBidDeadline(fourteenDayDeadline, "confirmed", now).deadlineState, "reminder");
+  assert.equal(classifyBidDeadline(fourteenDayDeadline, "confirmed", new Date(now.getTime() - 1)).deadlineState, "normal");
 });
 
 test("historical deadline fields migrate without breaking existing projects", () => {
@@ -270,6 +278,10 @@ test("daily summary only counts confirmed bid deadlines", () => {
     { id: 1, name: "已确认", section: "监理标段", bidDeadline: "2026-08-21 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-20 08:00" },
     { id: 2, name: "见招标文件", section: "监理标段", bidDeadline: null, bidDeadlineStatus: "document_required", documentAcquireDeadline: "2026-08-21 09:30", discoveredAt: "2026-08-20 08:00" },
     { id: 3, name: "未确认", section: "监理标段", bidDeadline: "2026-08-22 09:30", bidDeadlineStatus: "pending", documentAcquireDeadline: null, discoveredAt: "2026-08-20 08:00" },
+    { id: 4, name: "七天边界", section: "监理标段", bidDeadline: "2026-08-27 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
+    { id: 5, name: "八天提醒", section: "监理标段", bidDeadline: "2026-08-28 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
+    { id: 6, name: "十四天边界", section: "监理标段", bidDeadline: "2026-09-03 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
+    { id: 7, name: "十四天以外", section: "监理标段", bidDeadline: "2026-09-03 09:31", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
   ];
   const summary = buildSummary(projects, {
     date: "2026-08-20",
@@ -278,9 +290,13 @@ test("daily summary only counts confirmed bid deadlines", () => {
     succeededSources: 18,
   }, now);
 
-  assert.equal(summary.expiringWithin3DaysCount, 1);
-  assert.deepEqual(summary.earliestProjects.map((project) => project.projectId), [1]);
-  assert.equal(summary.earliestProjects[0].bidDeadline, "2026-08-21 09:30");
+  assert.equal(summary.summaryVersion, 2);
+  assert.equal(summary.generatedAt, now.toISOString());
+  assert.equal(summary.urgentWithin7DaysCount, 2);
+  assert.equal(summary.reminderFrom8To14DaysCount, 2);
+  assert.deepEqual(summary.urgentProjects.map((project) => project.projectId), [1, 4]);
+  assert.deepEqual(summary.reminderProjects.map((project) => project.projectId), [5, 6]);
+  assert.equal(Object.hasOwn(summary, "expiringWithin3DaysCount"), false);
 });
 
 test("retained projects never keep a stale available-link claim after a failed verification", () => {
@@ -331,10 +347,18 @@ test("published snapshot stays live, source-bound and link-unique", async () => 
     assert.ok(Object.hasOwn(project, "documentAcquireDeadline"));
   }
   assert.equal(snapshot.summary.newProjectCount, snapshot.projects.filter((project) => project.createdToday).length);
-  for (const summaryProject of snapshot.summary.earliestProjects) {
+  assert.equal(snapshot.schemaVersion, 4);
+  assert.equal(snapshot.storage.contractVersion, 4);
+  assert.equal(snapshot.summary.summaryVersion, 2);
+  assert.equal(Object.hasOwn(snapshot.summary, "expiringWithin3DaysCount"), false);
+  assert.equal(snapshot.summaries.every((summary) => [1, 2].includes(summary.summaryVersion)), true);
+  for (const summary of snapshot.summaries.filter((item) => item.summaryVersion === 2)) {
+    assert.equal(Object.hasOwn(summary, "expiringWithin3DaysCount"), false);
+  }
+  for (const summaryProject of [...snapshot.summary.urgentProjects, ...snapshot.summary.reminderProjects]) {
     const project = snapshot.projects.find((item) => item.id === summaryProject.projectId);
     assert.equal(project?.bidDeadlineStatus, "confirmed");
-    assert.equal(summaryProject.deadline, project?.bidDeadline);
+    assert.equal(summaryProject.bidDeadline, project?.bidDeadline);
   }
 
   const reviewed = [

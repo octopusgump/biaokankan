@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "mode": "live",
   "generatedAt": "2026-08-21T08:13:42.511Z",
   "storage": {
     "driver": "json",
-    "contractVersion": 3,
+    "contractVersion": 4,
     "databaseAdapter": "reserved"
   },
   "projects": [
@@ -1092,8 +1092,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-24 09:00",
       "deadlineShort": "08月24日 09:00",
-      "remaining": "剩余 3 天",
-      "deadlineState": "warning",
+      "remaining": "紧急 · 剩余 3 天",
+      "deadlineState": "urgent",
       "client": "河南省政府投资项目代建中心",
       "agency": "鑫诚国际工程咨询有限公司",
       "source": "河南省公共资源交易中心",
@@ -1133,8 +1133,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-24 09:00",
       "deadlineShort": "08月24日 09:00",
-      "remaining": "剩余 3 天",
-      "deadlineState": "warning",
+      "remaining": "紧急 · 剩余 3 天",
+      "deadlineState": "urgent",
       "client": "安阳殷商产业集聚建设投资有限公司",
       "agency": "柏诚工程管理有限公司",
       "source": "安阳市公共资源交易中心",
@@ -1174,8 +1174,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-24 09:30",
       "deadlineShort": "08月24日 09:30",
-      "remaining": "剩余 3 天",
-      "deadlineState": "warning",
+      "remaining": "紧急 · 剩余 3 天",
+      "deadlineState": "urgent",
       "client": "洛阳市住房和城乡建设局、洛阳市洛龙区住房和城乡建设局、洛阳市城乡一体化示范区住房和城乡建设局、洛阳市瀍河区住房和城乡建设局",
       "agency": "洛阳建信招标代理有限公司",
       "source": "洛阳市公共资源交易中心",
@@ -1215,8 +1215,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-24 09:30",
       "deadlineShort": "08月24日 09:30",
-      "remaining": "剩余 3 天",
-      "deadlineState": "warning",
+      "remaining": "紧急 · 剩余 3 天",
+      "deadlineState": "urgent",
       "client": "浚县住房和城乡建设局",
       "agency": "河南益瑞工程管理有限公司",
       "source": "鹤壁市公共资源交易中心",
@@ -1258,8 +1258,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-25 09:30",
       "deadlineShort": "08月25日 09:30",
-      "remaining": "剩余 4 天",
-      "deadlineState": "normal",
+      "remaining": "紧急 · 剩余 4 天",
+      "deadlineState": "urgent",
       "client": "通许县城市管理局（通许县城市综合执法局）",
       "agency": "河南省开兴工程管理咨询有限公司",
       "source": "开封市公共资源交易中心",
@@ -1296,8 +1296,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-25 10:00",
       "deadlineShort": "08月25日 10:00",
-      "remaining": "剩余 4 天",
-      "deadlineState": "normal",
+      "remaining": "紧急 · 剩余 4 天",
+      "deadlineState": "urgent",
       "client": "新密市住房和城乡建设管理局",
       "agency": "业润（河南）工程管理有限公司",
       "source": "郑州市公共资源交易中心",
@@ -1337,8 +1337,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-26 09:00",
       "deadlineShort": "08月26日 09:00",
-      "remaining": "剩余 5 天",
-      "deadlineState": "normal",
+      "remaining": "紧急 · 剩余 5 天",
+      "deadlineState": "urgent",
       "client": "信阳市申禾农业发展有限公司",
       "agency": "建基工程咨询有限公司",
       "source": "信阳市公共资源交易中心",
@@ -1375,8 +1375,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-26 09:00",
       "deadlineShort": "08月26日 09:00",
-      "remaining": "剩余 5 天",
-      "deadlineState": "normal",
+      "remaining": "紧急 · 剩余 5 天",
+      "deadlineState": "urgent",
       "client": "待核验",
       "agency": "建基工程咨询有限公司",
       "source": "信阳市公共资源交易中心",
@@ -1416,8 +1416,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-26 10:00",
       "deadlineShort": "08月26日 10:00",
-      "remaining": "剩余 5 天",
-      "deadlineState": "normal",
+      "remaining": "紧急 · 剩余 5 天",
+      "deadlineState": "urgent",
       "client": "郑州新发展基础设施建设有限公司",
       "agency": "河南联创工程造价管理有限公司",
       "source": "郑州市公共资源交易中心",
@@ -1457,8 +1457,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-08-31 09:30",
       "deadlineShort": "08月31日 09:30",
-      "remaining": "剩余 10 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 10 天",
+      "deadlineState": "reminder",
       "client": "通许县金田农业投资有限公司",
       "agency": "达信建设发展有限公司",
       "source": "开封市公共资源交易中心",
@@ -1500,8 +1500,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-01 09:00",
       "deadlineShort": "09月01日 09:00",
-      "remaining": "剩余 11 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 11 天",
+      "deadlineState": "reminder",
       "client": "长葛市润泉水务建设有限公司",
       "agency": "智远工程管理有限公司",
       "source": "许昌市公共资源交易中心",
@@ -1541,8 +1541,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-01 09:00",
       "deadlineShort": "09月01日 09:00",
-      "remaining": "剩余 11 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 11 天",
+      "deadlineState": "reminder",
       "client": "河南翔翼通用航空有限公司",
       "agency": "河南广配工程管理有限公司",
       "source": "许昌市公共资源交易中心",
@@ -1582,8 +1582,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-01 09:30",
       "deadlineShort": "09月01日 09:30",
-      "remaining": "剩余 11 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 11 天",
+      "deadlineState": "reminder",
       "client": "尉氏永达国家粮食储备库",
       "agency": "河南淙策工程管理有限公司",
       "source": "开封市公共资源交易中心",
@@ -1625,8 +1625,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 13:06",
       "deadline": "2026-09-01 09:30",
       "deadlineShort": "09月01日 09:30",
-      "remaining": "剩余 11 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 11 天",
+      "deadlineState": "reminder",
       "client": "尉氏县住房和城乡建设局",
       "agency": "河南旭泰工程咨询有限公司",
       "source": "开封市公共资源交易中心",
@@ -1666,8 +1666,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-01 10:00",
       "deadlineShort": "09月01日 10:00",
-      "remaining": "剩余 11 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 11 天",
+      "deadlineState": "reminder",
       "client": "新密市住房和城乡建设管理局",
       "agency": "河南标晟项目管理有限公司",
       "source": "郑州市公共资源交易中心",
@@ -1707,8 +1707,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-02 09:30",
       "deadlineShort": "09月02日 09:30",
-      "remaining": "剩余 12 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 12 天",
+      "deadlineState": "reminder",
       "client": "通许县城市管理局（通许县城市综合执法局）",
       "agency": "河南省开兴工程管理咨询有限公司",
       "source": "开封市公共资源交易中心",
@@ -1745,8 +1745,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-02 09:30",
       "deadlineShort": "09月02日 09:30",
-      "remaining": "剩余 12 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 12 天",
+      "deadlineState": "reminder",
       "client": "开封市汴能热力有限公司",
       "agency": "开封开财企业管理咨询有限公司",
       "source": "开封市公共资源交易中心",
@@ -1786,8 +1786,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-03 08:30",
       "deadlineShort": "09月03日 08:30",
-      "remaining": "剩余 13 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 13 天",
+      "deadlineState": "reminder",
       "client": "禹州市交运投资有限责任公司",
       "agency": "锐驰项目管理有限公司",
       "source": "许昌市公共资源交易中心",
@@ -1824,8 +1824,8 @@
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
       "deadline": "2026-09-03 10:00",
       "deadlineShort": "09月03日 10:00",
-      "remaining": "剩余 13 天",
-      "deadlineState": "normal",
+      "remaining": "提醒 · 剩余 13 天",
+      "deadlineState": "reminder",
       "client": "麦斯克电子材料（郑州）有限公司",
       "agency": "中金泰富工程管理有限公司",
       "source": "郑州市公共资源交易中心",
@@ -3201,67 +3201,106 @@
     "date": "2026-08-21"
   },
   "summary": {
+    "summaryVersion": 2,
     "date": "2026-08-21",
-    "generatedAt": "2026-08-21 16:13",
+    "generatedAt": "2026-08-21T08:13:42.511Z",
     "newProjectCount": 48,
-    "expiringWithin3DaysCount": 4,
-    "earliestProjects": [
+    "urgentWithin7DaysCount": 9,
+    "reminderFrom8To14DaysCount": 10,
+    "urgentProjects": [
       {
         "projectId": 1162132016,
         "name": "信阳市人民检察院办案用房和专业技术用房建设项目、河南省信阳监狱新建警察业务用房工程",
         "section": "监理标段",
-        "bidDeadline": "2026-08-24 09:00",
-        "deadline": "2026-08-24 09:00"
+        "bidDeadline": "2026-08-24 09:00"
       },
       {
         "projectId": 102823879,
         "name": "2025年安阳市殷都区安丰乡、西郊乡、洪河屯乡、北蒙办、伦掌镇3.28万亩高标准农田建设项目监理",
         "section": "监理标段",
-        "bidDeadline": "2026-08-24 09:00",
-        "deadline": "2026-08-24 09:00"
+        "bidDeadline": "2026-08-24 09:00"
       },
       {
         "projectId": 1832552002,
         "name": "洛阳市住房和城乡建设局新建焦作至平顶山铁路（洛阳段市区）“三电”及管线迁改工程设计施工总承包（EPC）项目监理五标段",
         "section": "监理标段",
-        "bidDeadline": "2026-08-24 09:30",
-        "deadline": "2026-08-24 09:30"
+        "bidDeadline": "2026-08-24 09:30"
+      }
+    ],
+    "reminderProjects": [
+      {
+        "projectId": 612593402,
+        "name": "通许县长智镇全域土地综合整治项目 EPC( 一期 )",
+        "section": "第二标段",
+        "bidDeadline": "2026-08-31 09:30"
+      },
+      {
+        "projectId": 1476038903,
+        "name": "长葛市农村自来水提升项目工程总承包（ EPC）及监理项目 （评定分离）",
+        "section": "第一标段",
+        "bidDeadline": "2026-09-01 09:00"
+      },
+      {
+        "projectId": 1771884931,
+        "name": "年研发生产300架重载无人机项目工程部分（EPC）及监理",
+        "section": "第二标段",
+        "bidDeadline": "2026-09-01 09:00"
       }
     ],
     "abnormalSourceCount": 0
   },
   "summaries": [
     {
+      "summaryVersion": 2,
       "date": "2026-08-21",
-      "generatedAt": "2026-08-21 16:13",
+      "generatedAt": "2026-08-21T08:13:42.511Z",
       "newProjectCount": 48,
-      "expiringWithin3DaysCount": 4,
-      "earliestProjects": [
+      "urgentWithin7DaysCount": 9,
+      "reminderFrom8To14DaysCount": 10,
+      "urgentProjects": [
         {
           "projectId": 1162132016,
           "name": "信阳市人民检察院办案用房和专业技术用房建设项目、河南省信阳监狱新建警察业务用房工程",
           "section": "监理标段",
-          "bidDeadline": "2026-08-24 09:00",
-          "deadline": "2026-08-24 09:00"
+          "bidDeadline": "2026-08-24 09:00"
         },
         {
           "projectId": 102823879,
           "name": "2025年安阳市殷都区安丰乡、西郊乡、洪河屯乡、北蒙办、伦掌镇3.28万亩高标准农田建设项目监理",
           "section": "监理标段",
-          "bidDeadline": "2026-08-24 09:00",
-          "deadline": "2026-08-24 09:00"
+          "bidDeadline": "2026-08-24 09:00"
         },
         {
           "projectId": 1832552002,
           "name": "洛阳市住房和城乡建设局新建焦作至平顶山铁路（洛阳段市区）“三电”及管线迁改工程设计施工总承包（EPC）项目监理五标段",
           "section": "监理标段",
-          "bidDeadline": "2026-08-24 09:30",
-          "deadline": "2026-08-24 09:30"
+          "bidDeadline": "2026-08-24 09:30"
+        }
+      ],
+      "reminderProjects": [
+        {
+          "projectId": 612593402,
+          "name": "通许县长智镇全域土地综合整治项目 EPC( 一期 )",
+          "section": "第二标段",
+          "bidDeadline": "2026-08-31 09:30"
+        },
+        {
+          "projectId": 1476038903,
+          "name": "长葛市农村自来水提升项目工程总承包（ EPC）及监理项目 （评定分离）",
+          "section": "第一标段",
+          "bidDeadline": "2026-09-01 09:00"
+        },
+        {
+          "projectId": 1771884931,
+          "name": "年研发生产300架重载无人机项目工程部分（EPC）及监理",
+          "section": "第二标段",
+          "bidDeadline": "2026-09-01 09:00"
         }
       ],
       "abnormalSourceCount": 0
     },
     {
+      "summaryVersion": 1,
       "date": "2026-08-20",
       "generatedAt": "2026-08-20 13:38",
       "newProjectCount": 24,
