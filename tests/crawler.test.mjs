@@ -153,6 +153,24 @@ test("scores category evidence only from the title and project overview", () => 
   assert.equal(project.category, "交通工程监理");
 });
 
+test("extracts numbered sections whether or not they start with 第", () => {
+  const cases = [
+    ["滑县智泊停车场建设项目（医院地下停车场）二标段监理招标公告", "二标段"],
+    ["水利枢纽工程SLZYQJL-1标段施工监理招标公告", "1标段"],
+  ];
+
+  for (const [title, expected] of cases) {
+    const project = extractProject({
+      title,
+      html: `<h2>${title}</h2><p>项目概况：本标段提供施工监理服务。</p>`,
+      url: `https://example.test/section/${encodeURIComponent(title)}`,
+      publishedAt: "2026-08-01",
+      source,
+    }, new Date("2026-08-01T00:00:00+08:00"));
+    assert.equal(project.section, expected, title);
+  }
+});
+
 test("normalizes fragmented dates and common deadline label variants", () => {
   const cases = [
     ["投标文件递交的截止时间（投标截止时间，下同）为 20 26 年 9 月 9 日上午 09 时 00 分。", "2026-09-09 09:00"],
