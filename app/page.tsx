@@ -2,14 +2,14 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { PublicFooter, PublicIntro } from "./public-intro";
-import { documentAcquirePresentation, formatDocumentAcquireWindow, normalizeProjectTimeFields } from "../shared/project-time.mjs";
+import { documentAcquirePresentation, formatDocumentAcquireWindow, normalizeProjectTimeFields, parseChinaDateTime } from "../shared/project-time.mjs";
 
-type DeadlineState = "normal" | "warning" | "danger" | "expired" | "pending";
+type DeadlineState = "normal" | "reminder" | "urgent" | "expired" | "pending";
 type BidDeadlineStatus = "confirmed" | "document_required" | "pending";
 type DataState = "loading" | "ready" | "never" | "unavailable";
 type DetailState = "inactive" | "loading" | "ready" | "missing" | "never" | "unavailable";
 type MainView = "radar" | "admin";
-type RadarTab = "today" | "upcoming" | "all";
+type RadarTab = "urgent" | "reminder" | "today" | "all";
 type SortMode = "deadline" | "discovered" | "published" | "updated" | "investment";
 
 type Project = {
@@ -40,7 +40,8 @@ type ScanRun = {
 };
 
 type ScanError = { id: string; level: string; source: string; project?: string; url?: string; time: string; detail: string; action?: string };
-type DailySummary = { date: string; generatedAt: string; newProjectCount: number; expiringWithin3DaysCount: number; earliestProjects: Array<{ projectId: number; name: string; section: string; deadline: string }>; abnormalSourceCount: number };
+type SummaryProject = { projectId: number; name: string; section: string; bidDeadline: string };
+type DailySummary = { summaryVersion: 2; date: string; generatedAt: string; newProjectCount: number; urgentWithin7DaysCount: number; reminderFrom8To14DaysCount: number; urgentProjects: SummaryProject[]; reminderProjects: SummaryProject[]; abnormalSourceCount: number };
 export type RadarSnapshot = { schemaVersion: number; mode: "live"; generatedAt: string | null; projects: Project[]; sources: Source[]; run: ScanRun | null; summary: DailySummary | null; errors: ScanError[] };
 
 const sortStorageKey = "biaokankan-project-sort-v1";
@@ -52,7 +53,7 @@ const sortOptions: Array<{ value: SortMode; label: string }> = [
   { value: "investment", label: "总投资由高到低" },
 ];
 const sortModes = sortOptions.map((option) => option.value);
-const statusOptions = ["全部状态", "临近截止", "待核验", "已截止"].map((value) => ({ value, label: value }));
+const statusOptions = ["全部状态", "7天内紧急", "8–14天提醒", "待核验", "已截止"].map((value) => ({ value, label: value }));
 
 function isStale(value: string | null) {
   if (!value) return false; const age = Date.now() - new Date(value).getTime();
@@ -62,6 +63,10 @@ function isStale(value: string | null) {
 function timeValue(value: string | null | undefined) {
   if (!value) return Number.NaN;
   return new Date(value.replace(" ", "T")).getTime();
+}
+
+function bidDeadlineTimeValue(value: string | null | undefined) {
+  return parseChinaDateTime(value)?.getTime() ?? Number.NaN;
 }
 
 function compareProjects(a: Project, b: Project, mode: SortMode) {
@@ -80,8 +85,8 @@ function compareProjects(a: Project, b: Project, mode: SortMode) {
     return right - left;
   }
   const now = Date.now();
-  const left = timeValue(a.bidDeadlineStatus === "confirmed" ? a.bidDeadline : null);
-  const right = timeValue(b.bidDeadlineStatus === "confirmed" ? b.bidDeadline : null);
+  const left = bidDeadlineTimeValue(a.bidDeadlineStatus === "confirmed" ? a.bidDeadline : null);
+  const right = bidDeadlineTimeValue(b.bidDeadlineStatus === "confirmed" ? b.bidDeadline : null);
   const group = (value: number) => !Number.isFinite(value) ? 2 : value < now ? 1 : 0;
   const leftGroup = group(left); const rightGroup = group(right);
   if (leftGroup !== rightGroup) return leftGroup - rightGroup;
@@ -105,11 +110,12 @@ function ProjectTimes({ project }: { project: Project }) {
 
 function UpdateIndicator() { return <em className="update-indicator"><i />公告有更新</em>; }
 
-function DataMessage({ state, filtered, onRetry }: { state: DataState; filtered: boolean; onRetry: () => void }) {
+function DataMessage({ state, filtered, emptyCopy, onRetry }: { state: DataState; filtered: boolean; emptyCopy?: [string, string]; onRetry: () => void }) {
   const content = state === "loading" ? ["···", "正在读取真实扫描数据", "请稍候"]
     : state === "unavailable" ? ["!", "项目数据暂时无法读取", "系统没有使用静态项目替代真实数据"]
       : state === "never" ? ["○", "等待首次扫描", "扫描完成后，真实项目会显示在这里"]
-        : filtered ? ["⌕", "没有符合当前条件的项目", "请调整搜索词或筛选条件"]
+        : emptyCopy ? ["✓", emptyCopy[0], emptyCopy[1]]
+          : filtered ? ["⌕", "没有符合当前条件的项目", "请调整搜索词或筛选条件"]
           : ["✓", "本次扫描未发现监理项目", "当前没有符合收录规则的真实公告"];
   return <div className="empty-state"><div>{content[0]}</div><strong>{content[1]}</strong><span>{content[2]}</span>{state === "unavailable" && <button onClick={onRetry}>重新读取</button>}</div>;
 }
@@ -232,12 +238,12 @@ function SelectMenu<T extends string>({ label, value, options, onChange, variant
 
 export function RadarApp({ initialView = "radar", detailFromQuery = false, initialSnapshot = null }: { initialView?: MainView; detailFromQuery?: boolean; initialSnapshot?: RadarSnapshot | null }) {
   const [view] = useState<MainView>(initialView);
-  const [tab, setTab] = useState<RadarTab>("today");
+  const [tab, setTab] = useState<RadarTab>("urgent");
   const [sortMode, setSortMode] = useState<SortMode>("deadline");
   const [adminTab, setAdminTab] = useState<"sources" | "errors">("sources");
   const [query, setQuery] = useState(""); const [sourceFilter, setSourceFilter] = useState("全部来源"); const [statusFilter, setStatusFilter] = useState("全部状态");
   const [projects, setProjects] = useState<Project[]>([]); const [sources, setSources] = useState<Source[]>([]);
-  const [run, setRun] = useState<ScanRun | null>(null); const [summary, setSummary] = useState<DailySummary | null>(null);
+  const [run, setRun] = useState<ScanRun | null>(null);
   const [errors, setErrors] = useState<ScanError[]>([]); const [generatedAt, setGeneratedAt] = useState<string | null>(null); const [dataState, setDataState] = useState<DataState>("loading");
   const [reload, setReload] = useState(0); const [mobileNav, setMobileNav] = useState(false);
 
@@ -248,8 +254,8 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
       snapshot = await response.json() as RadarSnapshot;
     }
     if (snapshot.mode !== "live" || !Array.isArray(snapshot.projects) || !Array.isArray(snapshot.sources)) throw new Error();
-    if (cancelled) return; setProjects(snapshot.projects.map((project) => normalizeProjectTimeFields(project) as Project)); setSources(snapshot.sources); setRun(snapshot.run); setSummary(snapshot.summary); setErrors(snapshot.errors || []); setGeneratedAt(snapshot.generatedAt); setDataState(snapshot.run ? "ready" : "never");
-  } catch { if (!cancelled) { setProjects([]); setSources([]); setRun(null); setSummary(null); setErrors([]); setGeneratedAt(null); setDataState("unavailable"); } } })(); return () => { cancelled = true; }; }, [initialSnapshot, reload, view]);
+    if (cancelled) return; setProjects(snapshot.projects.map((project) => normalizeProjectTimeFields(project) as Project)); setSources(snapshot.sources); setRun(snapshot.run); setErrors(snapshot.errors || []); setGeneratedAt(snapshot.generatedAt); setDataState(snapshot.run ? "ready" : "never");
+  } catch { if (!cancelled) { setProjects([]); setSources([]); setRun(null); setErrors([]); setGeneratedAt(null); setDataState("unavailable"); } } })(); return () => { cancelled = true; }; }, [initialSnapshot, reload, view]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -261,6 +267,21 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(() => {
+    if (dataState !== "ready") return;
+    const refreshDeadlineStates = () => {
+      const now = new Date();
+      setProjects((current) => current.map((project) => normalizeProjectTimeFields(project, now) as Project));
+    };
+    const interval = window.setInterval(refreshDeadlineStates, 60_000);
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") refreshDeadlineStates(); };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [dataState]);
+
   const { selected, detailState } = useMemo<{ selected: Project | null; detailState: DetailState }>(() => {
     if (!detailFromQuery) return { selected: null, detailState: "inactive" };
     if (dataState !== "ready") return { selected: null, detailState: dataState };
@@ -271,17 +292,17 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
   }, [dataState, detailFromQuery, projects]);
 
   const filtered = useMemo(() => { const keyword = query.trim().toLowerCase(); return projects.filter((project) => {
-    const tabMatch = tab === "all" || (tab === "today" && project.createdToday) || (tab === "upcoming" && ["warning", "danger"].includes(project.deadlineState));
+    const tabMatch = tab === "all" || (tab === "today" && project.createdToday) || project.deadlineState === tab;
     const queryMatch = !keyword || [project.name, project.section, project.client, project.agency, project.source].join(" ").toLowerCase().includes(keyword);
     const sourceMatch = sourceFilter === "全部来源" || project.source === sourceFilter;
-    const statusMatch = statusFilter === "全部状态" || (statusFilter === "临近截止" && ["warning", "danger"].includes(project.deadlineState)) || (statusFilter === "待核验" && project.deadlineState === "pending") || (statusFilter === "已截止" && project.deadlineState === "expired");
+    const statusMatch = statusFilter === "全部状态" || (statusFilter === "7天内紧急" && project.deadlineState === "urgent") || (statusFilter === "8–14天提醒" && project.deadlineState === "reminder") || (statusFilter === "待核验" && project.deadlineState === "pending") || (statusFilter === "已截止" && project.deadlineState === "expired");
     return tabMatch && queryMatch && sourceMatch && statusMatch;
   }).sort((a, b) => compareProjects(a, b, sortMode)); }, [projects, query, sourceFilter, statusFilter, tab, sortMode]);
 
   const stale = dataState === "ready" && (run?.status !== "成功" || isStale(generatedAt));
-  const todayCount = summary?.newProjectCount ?? projects.filter((p) => p.createdToday).length;
-  const upcomingCount = summary?.expiringWithin3DaysCount ?? projects.filter((p) => ["warning", "danger"].includes(p.deadlineState)).length;
-  const tomorrowCount = projects.filter((p) => p.deadlineState === "danger").length;
+  const urgentCount = projects.filter((p) => p.deadlineState === "urgent").length;
+  const reminderCount = projects.filter((p) => p.deadlineState === "reminder").length;
+  const todayCount = projects.filter((p) => p.createdToday).length;
   const currentDate = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date());
   const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const scanTime = run?.finishedAt?.split(" ")[1] || "";
@@ -313,9 +334,9 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
   {detailFromQuery ? selected && detailState === "ready" ? <ProjectDetail project={selected} onBack={() => { window.location.assign(appHref("/radar")); }} onOpenOriginal={openOriginal} /> : <ProjectDetailMessage state={detailState === "inactive" || detailState === "ready" ? "loading" : detailState} onBack={() => { window.location.assign(appHref("/radar")); }} onRetry={() => setReload((n) => n + 1)} /> : view === "radar" ? <>
     <header className="topbar"><div><p className="eyebrow">{currentDate}</p><h1>项目雷达</h1><p className="subtitle">集中查看真实发现的监理项目，优先处理临近截止机会。</p></div><div className={`scan-status static ${stale ? "warning" : ""}`}><span className="health-dot" /><b>{dataState === "loading" ? "正在读取" : dataState === "unavailable" ? "数据不可用" : dataState === "never" ? "等待首次扫描" : stale ? "部分来源异常" : "扫描正常"}</b><small>{scanMeta}</small></div></header>
     {stale && <div className="stale-banner"><strong>当前显示上次成功扫描数据</strong><span>扫描时间：{run?.finishedAt}。部分来源本次访问失败，请以原公告为准。</span></div>}
-    <div className="summary-grid" role="tablist"><button className={tab === "today" ? "selected" : ""} onClick={() => setTab("today")}><span>今日新增</span><strong>{dataState === "ready" ? todayCount : "—"}</strong><small>按系统首次发现时间计算</small></button><button className={`warning ${tab === "upcoming" ? "selected" : ""}`} onClick={() => setTab("upcoming")}><span>3 天内截止</span><strong>{dataState === "ready" ? upcomingCount : "—"}</strong><small>{dataState === "ready" ? `其中 ${tomorrowCount} 个剩余 1 天` : "等待有效数据"}</small></button><button className={tab === "all" ? "selected" : ""} onClick={() => setTab("all")}><span>全部项目</span><strong>{dataState === "ready" ? projects.length : "—"}</strong><small>来自 {dataState === "ready" ? sources.length : "—"} 个已接入来源</small></button></div>
+    <div className="summary-grid" role="tablist"><button role="tab" aria-selected={tab === "urgent"} className={`urgent ${tab === "urgent" ? "selected" : ""}`} onClick={() => setTab("urgent")}><span>7天内紧急</span><strong>{dataState === "ready" ? urgentCount : "—"}</strong><small>需优先判断是否跟进</small></button><button role="tab" aria-selected={tab === "reminder"} className={`reminder ${tab === "reminder" ? "selected" : ""}`} onClick={() => setTab("reminder")}><span>8–14天提醒</span><strong>{dataState === "ready" ? reminderCount : "—"}</strong><small>提前准备并持续关注</small></button><button role="tab" aria-selected={tab === "today"} className={tab === "today" ? "selected" : ""} onClick={() => setTab("today")}><span>今日新增</span><strong>{dataState === "ready" ? todayCount : "—"}</strong><small>按系统首次发现时间计算</small></button><button role="tab" aria-selected={tab === "all"} className={tab === "all" ? "selected" : ""} onClick={() => setTab("all")}><span>全部项目</span><strong>{dataState === "ready" ? projects.length : "—"}</strong><small>来自 {dataState === "ready" ? sources.length : "—"} 个已接入来源</small></button></div>
     <section className="project-panel"><div className="filters"><label className="search-box"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索项目名称、招标人或代理机构" /></label><SelectMenu label="信息来源" value={sourceFilter} options={[{ value: "全部来源", label: "全部来源" }, ...[...new Set(projects.map((p) => p.source))].map((source) => ({ value: source, label: source }))]} onChange={setSourceFilter} /><SelectMenu label="截止状态" value={statusFilter} options={statusOptions} onChange={setStatusFilter} />{hasFilters && <button className="clear-filter" onClick={() => { setQuery(""); setSourceFilter("全部来源"); setStatusFilter("全部状态"); }}>清除筛选</button>}</div><div className="list-meta"><span>共找到 <b>{dataState === "ready" ? filtered.length : 0}</b> 个项目</span><SelectMenu label="排序方式" value={sortMode} options={sortOptions} onChange={changeSortMode} variant="compact" /></div>
-    {dataState === "ready" && filtered.length ? <><div className="project-table"><div className="table-row table-head"><span>投标截止</span><span>项目名称 / 标段</span><span>总投资</span><span>招标人</span><span>招标代理机构</span><span>信息来源 / 原公告</span></div>{filtered.map((p) => <ProjectRow key={p.id} project={p} onOpen={() => openProject(p)} onOpenOriginal={() => openOriginal(p)} />)}</div><div className="mobile-projects">{filtered.map((p) => <MobileProject key={p.id} project={p} onOpen={() => openProject(p)} onOpenOriginal={() => openOriginal(p)} />)}</div></> : <DataMessage state={dataState} filtered={hasFilters || tab !== "all"} onRetry={() => setReload((n) => n + 1)} />}<div className="notice"><strong>信息核验提示</strong><span>系统仅整理公开信息，无法确定的字段显示“待核验”；原公告及招标文件是唯一最终依据。</span></div></section>
+    {dataState === "ready" && filtered.length ? <><div className="project-table"><div className="table-row table-head"><span>投标截止</span><span>项目名称 / 标段</span><span>总投资</span><span>招标人</span><span>招标代理机构</span><span>信息来源 / 原公告</span></div>{filtered.map((p) => <ProjectRow key={p.id} project={p} onOpen={() => openProject(p)} onOpenOriginal={() => openOriginal(p)} />)}</div><div className="mobile-projects">{filtered.map((p) => <MobileProject key={p.id} project={p} onOpen={() => openProject(p)} onOpenOriginal={() => openOriginal(p)} />)}</div></> : <DataMessage state={dataState} filtered={hasFilters || tab !== "all"} emptyCopy={!hasFilters && tab === "urgent" ? ["未来 7 天暂无紧急项目", "可以继续查看 8–14 天提醒或今日新增"] : !hasFilters && tab === "reminder" ? ["第 8–14 天暂无提醒项目", "可以继续查看今日新增或全部项目"] : undefined} onRetry={() => setReload((n) => n + 1)} />}<div className="notice"><strong>信息核验提示</strong><span>系统仅整理公开信息，无法确定的字段显示“待核验”；原公告及招标文件是唯一最终依据。</span></div></section>
   </> : <AdminCenter tab={adminTab} setTab={setAdminTab} sources={sources} errors={errors} run={run} />}</section></main>;
 }
 

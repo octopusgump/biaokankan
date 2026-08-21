@@ -155,14 +155,14 @@ const run = {
   date: today,
 };
 
-const summary = buildSummary(projects, run, started, partialNames.size);
+const summary = buildSummary(projects, run, finished, partialNames.size);
 const snapshot = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   mode: "live",
   generatedAt: finished.toISOString(),
   storage: {
     driver: process.env.TENDER_STORE || "json",
-    contractVersion: 3,
+    contractVersion: 4,
     databaseAdapter: "reserved",
   },
   projects,

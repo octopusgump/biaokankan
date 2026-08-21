@@ -40,6 +40,10 @@ test("the published snapshot keeps bid deadlines separate from document acquisit
   const envelope = JSON.parse(await readFile(new URL("data/radar.enc.json", outputRoot), "utf8"));
   const key = await derivePreviewKey(password, envelope, ["decrypt"]);
   const snapshot = await decryptPreviewJson(envelope, key);
+  assert.equal(snapshot.schemaVersion, 4);
+  assert.equal(snapshot.storage.contractVersion, 4);
+  assert.equal(snapshot.summary.summaryVersion, 2);
+  assert.equal(Object.hasOwn(snapshot.summary, "expiringWithin3DaysCount"), false);
   const samples = [
     ["西平县乡村振兴肉牛产业融合发展建设项目", "2026-06-16 08:00", "2026-06-23 18:00"],
     ["正阳县慎南路", "2026-05-14 08:00", "2026-05-20 18:00"],

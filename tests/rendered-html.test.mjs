@@ -93,6 +93,10 @@ test("removes starter artifacts and ships product metadata", async () => {
   assert.match(page, /文件获取窗口仅表示下载期限，不代表投标已经截止/);
   assert.match(page, /formatDocumentAcquireWindow/);
   assert.match(page, /normalizeProjectTimeFields/);
+  assert.match(page, /7天内紧急/);
+  assert.match(page, /8–14天提醒/);
+  assert.match(page, /useState<RadarTab>\("urgent"\)/);
+  assert.doesNotMatch(page, /3 天内截止|expiringWithin3DaysCount/);
   assert.match(page, /role="listbox"/);
   assert.match(page, /className="select-native"/);
   assert.match(styles, /backdrop-filter: blur\(10px\) saturate\(125%\)/);
