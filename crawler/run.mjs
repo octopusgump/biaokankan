@@ -1,6 +1,7 @@
 import { chinaDateKey, deadlinePresentation, formatChinaTime, projectFingerprint, retainProjectWithLatestLinkState } from "./core.mjs";
 import { scanSource, SOURCE_DEFINITIONS } from "./sources.mjs";
 import { createSnapshotStore } from "./storage.mjs";
+import { buildSummary } from "./summary.mjs";
 
 const started = new Date();
 const store = createSnapshotStore();
@@ -97,13 +98,15 @@ const mergedFresh = freshProjects.map((project) => {
     newProjects += 1;
     return { ...project, createdToday: true };
   }
+  const mergedProject = retainConfirmedBidDeadline(project, old);
+  mergedProject.fingerprint = projectFingerprint(mergedProject);
   const oldFingerprint = old.fingerprint || projectFingerprint(old);
-  if (oldFingerprint === project.fingerprint) {
-    return { ...project, discoveredAt: old.discoveredAt, updatedAt: old.updatedAt, createdToday: old.discoveredAt?.slice(0, 10) === today };
+  if (oldFingerprint === mergedProject.fingerprint) {
+    return { ...mergedProject, discoveredAt: old.discoveredAt, updatedAt: old.updatedAt, createdToday: old.discoveredAt?.slice(0, 10) === today };
   }
   updatedProjects += 1;
   return {
-    ...project,
+    ...mergedProject,
     discoveredAt: old.discoveredAt,
     createdToday: old.discoveredAt?.slice(0, 10) === today,
     related: {
@@ -120,12 +123,18 @@ const retainedFromFailedSources = previous.projects
 const finished = new Date();
 const projects = [...mergedFresh, ...retainedFromFailedSources]
   .filter((project, index, all) => all.findIndex((item) => item.url === project.url) === index)
-  .map((project) => ({ ...project, ...deadlinePresentation(project.deadline, finished) }))
+  .map((project) => ({
+    ...project,
+    deadline: project.bidDeadline,
+    ...deadlinePresentation(project.bidDeadline, finished, project.bidDeadlineStatus),
+  }))
   .sort((a, b) => {
-    if (!a.deadline && !b.deadline) return b.publishedAt.localeCompare(a.publishedAt);
-    if (!a.deadline) return 1;
-    if (!b.deadline) return -1;
-    return a.deadline.localeCompare(b.deadline);
+    const left = a.bidDeadlineStatus === "confirmed" ? a.bidDeadline : null;
+    const right = b.bidDeadlineStatus === "confirmed" ? b.bidDeadline : null;
+    if (!left && !right) return b.publishedAt.localeCompare(a.publishedAt);
+    if (!left) return 1;
+    if (!right) return -1;
+    return left.localeCompare(right);
   });
 
 const succeeded = successfulNames.size;
@@ -146,14 +155,14 @@ const run = {
   date: today,
 };
 
-const summary = buildSummary(projects, run, started);
+const summary = buildSummary(projects, run, started, partialNames.size);
 const snapshot = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   mode: "live",
   generatedAt: finished.toISOString(),
   storage: {
     driver: process.env.TENDER_STORE || "json",
-    contractVersion: 2,
+    contractVersion: 3,
     databaseAdapter: "reserved",
   },
   projects,
@@ -201,27 +210,16 @@ function validateProject(project, source) {
   return null;
 }
 
-function buildSummary(projects, run, now) {
-  const expiring = projects
-    .filter((project) => project.deadline)
-    .filter((project) => {
-      const deadline = new Date(`${project.deadline.replace(" ", "T")}:00+08:00`);
-      const diff = deadline.getTime() - now.getTime();
-      return diff > 0 && diff <= 3 * 86_400_000;
-    })
-    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+function retainConfirmedBidDeadline(project, old) {
+  if (project.bidDeadlineStatus === "confirmed" || old.bidDeadlineStatus !== "confirmed" || !old.bidDeadline) return project;
   return {
-    date: run.date,
-    generatedAt: run.finishedAt,
-    newProjectCount: projects.filter((project) => project.discoveredAt?.slice(0, 10) === run.date).length,
-    expiringWithin3DaysCount: expiring.length,
-    earliestProjects: expiring.slice(0, 3).map((project) => ({
-      projectId: project.id,
-      name: project.name,
-      section: project.section,
-      deadline: project.deadline,
-    })),
-    abnormalSourceCount: run.sourceCount - run.succeededSources + partialNames.size,
+    ...project,
+    bidDeadline: old.bidDeadline,
+    bidDeadlineStatus: "confirmed",
+    bidDeadlineEvidence: old.bidDeadlineEvidence,
+    bidDeadlineVerifiedAt: old.bidDeadlineVerifiedAt,
+    deadline: old.bidDeadline,
+    pendingFields: project.pendingFields?.filter((field) => field !== "投标截止时间"),
   };
 }
 

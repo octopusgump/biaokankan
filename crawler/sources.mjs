@@ -93,6 +93,7 @@ export const SOURCE_DEFINITIONS = [
     adapter: "generic-html",
     detailPattern: /\/engineering\.html\?.*categorynum=006001001/i,
     transport: "system-curl",
+    detailResolver: "hebi-visiturl",
   },
   {
     id: 4,
@@ -435,15 +436,21 @@ async function scanLuohe(source, now) {
       text: "",
     }))
     .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now));
-  return scanHtmlEntries(source, dedupeBy(entries, (item) => item.url), now);
-}
-
-async function scanHtmlEntries(source, entries, now) {
   const projects = [];
   const issues = [];
-  for (const entry of entries) {
+  for (const entry of dedupeBy(entries, (item) => item.url)) {
     try {
-      const html = await fetchSourceText(source, entry.fetchUrl || entry.url, { headers: { referer: source.listEntry } });
+      const response = await fetchText(entry.url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json;charset=UTF-8",
+          referer: source.listEntry,
+        },
+      });
+      const payload = JSON.parse(response);
+      const records = Array.isArray(payload?.data) ? payload.data : payload?.data ? [payload.data] : [];
+      const html = records.map((record) => record?.content || "").filter(Boolean).join("\n");
+      if (!html) throw new Error("详情接口未返回公告正文");
       const project = extractProject({ ...entry, html, source }, now);
       if (project) projects.push(project);
     } catch (error) {
@@ -456,6 +463,58 @@ async function scanHtmlEntries(source, entries, now) {
     if (REQUEST_DELAY_MS > 0) await wait(REQUEST_DELAY_MS);
   }
   return { source, read: entries.length, projects: dedupeBy(projects, (project) => project.url), issues };
+}
+
+async function scanHtmlEntries(source, entries, now) {
+  const projects = [];
+  const issues = [];
+  for (const entry of entries) {
+    try {
+      const html = await fetchProjectDetailHtml(source, entry);
+      const project = extractProject({ ...entry, html, source }, now);
+      if (project) projects.push(project);
+    } catch (error) {
+      issues.push({
+        url: entry.url,
+        title: entry.title,
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
+    if (REQUEST_DELAY_MS > 0) await wait(REQUEST_DELAY_MS);
+  }
+  return { source, read: entries.length, projects: dedupeBy(projects, (project) => project.url), issues };
+}
+
+async function fetchProjectDetailHtml(source, entry) {
+  if (source.detailResolver !== "hebi-visiturl") {
+    return fetchSourceText(source, entry.fetchUrl || entry.url, { headers: { referer: source.listEntry } });
+  }
+
+  const wrapperUrl = new URL(entry.url);
+  const infoid = wrapperUrl.searchParams.get("infoid");
+  const categorynum = wrapperUrl.searchParams.get("categorynum");
+  if (!infoid || !categorynum) throw new Error("鹤壁项目链接缺少 infoid 或 categorynum");
+
+  const endpoint = new URL("/EWB-FRONT/rest/GgSearchAction/getDetails", source.entry).toString();
+  const response = await fetchSourceText(source, endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+      referer: entry.url,
+    },
+    body: new URLSearchParams({
+      params: JSON.stringify({ siteGuid: "", infoid, categorynum }),
+    }).toString(),
+  });
+  const records = JSON.parse(response);
+  const visiturl = Array.isArray(records)
+    ? records.find((record) => record?.infoid === infoid)?.visiturl || records[0]?.visiturl
+    : null;
+  if (!visiturl) throw new Error("鹤壁详情接口未返回实际公告地址");
+
+  return fetchSourceText(source, new URL(visiturl, source.entry).toString(), {
+    headers: { referer: entry.url },
+  });
 }
 
 async function fetchSourceText(source, url, options = {}) {
@@ -475,6 +534,11 @@ async function fetchSourceText(source, url, options = {}) {
   ];
   const referer = options.headers?.referer;
   if (referer) args.push("--referer", referer);
+  const method = String(options.method || "GET").toUpperCase();
+  if (method !== "GET") args.push("--request", method);
+  const contentType = options.headers?.["content-type"];
+  if (contentType) args.push("--header", `Content-Type: ${contentType}`);
+  if (options.body !== undefined) args.push("--data-raw", String(options.body));
   args.push(url);
   return new Promise((resolve, reject) => {
     execFile("curl", args, { encoding: "buffer", maxBuffer: 20 * 1024 * 1024 }, (error, stdout, stderr) => {

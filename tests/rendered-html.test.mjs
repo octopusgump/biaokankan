@@ -100,6 +100,12 @@ test("removes starter artifacts and ships product metadata", async () => {
   assert.match(page, /biaokankan-project-sort-v1/);
   assert.match(page, /localStorage\.setItem\(sortStorageKey, value\)/);
   assert.match(page, /function SelectMenu/);
+  assert.match(page, /function ProjectTimes/);
+  assert.match(page, /招标文件获取窗口/);
+  assert.match(page, /待核验（公告注明：见招标文件）/);
+  assert.match(page, /文件获取窗口仅表示下载期限，不代表投标已经截止/);
+  assert.match(page, /formatDocumentAcquireWindow/);
+  assert.match(page, /normalizeProjectTimeFields/);
   assert.match(page, /role="listbox"/);
   assert.match(page, /className="select-native"/);
   assert.match(styles, /backdrop-filter: blur\(10px\) saturate\(125%\)/);

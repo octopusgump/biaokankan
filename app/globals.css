@@ -448,11 +448,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .select-trigger, .select-popover, .select-native select { border: 1px solid ButtonText; }
   .select-option.selected { outline: 1px solid Highlight; }
 }
-.project-table { min-width: 1180px; border-top: 1px solid var(--divider); }
+.project-table { min-width: 1220px; border-top: 1px solid var(--divider); }
 .table-row {
   padding: 16px 24px;
   display: grid;
-  grid-template-columns: 145px minmax(250px, 2.1fr) 110px minmax(160px, 1.05fr) minmax(165px, 1.05fr) minmax(165px, 1fr);
+  grid-template-columns: 180px minmax(250px, 2.1fr) 110px minmax(160px, 1.05fr) minmax(165px, 1.05fr) minmax(165px, 1fr);
   gap: 18px;
   align-items: center;
 }
@@ -491,8 +491,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .deadline-copy, .deadline-copy strong, .deadline-copy small { display: block; }
 .deadline-copy { min-width: 0; }
+.time-kind { display: block; margin-bottom: 3px; color: var(--subtle); font-size: 10px; font-weight: 600; letter-spacing: .03em; }
 .deadline-copy strong { color: var(--ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
-.deadline-copy small { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.deadline-copy small { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .deadline-block.warning .deadline-dot { background: var(--warning); }
 .deadline-block.warning .deadline-copy small { color: var(--ink-soft); font-weight: 600; }
 .deadline-block.danger .deadline-dot { background: var(--danger); }
@@ -502,7 +503,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .deadline-block.expired .deadline-dot { background: #8e8e93; }
 .deadline-block.pending .deadline-dot { border: 1.5px solid #8e8e93; background: transparent; }
 .deadline-block.pending .deadline-copy strong, .deadline-block.pending .deadline-copy small { color: var(--subtle); }
-.data-row:hover .deadline-dot, .mobile-project-card:hover .deadline-dot { transform: scale(1.125); }
+.project-time-stack { min-width: 0; display: grid; gap: 12px; }
+.document-acquire { min-width: 0; display: flex; align-items: flex-start; gap: 10px; }
+.document-acquire > i { width: 8px; height: 8px; margin-top: 6px; flex: 0 0 auto; border-radius: 2px; background: #6f7f8f; }
+.document-acquire > span, .document-acquire strong, .document-acquire small { display: block; }
+.document-acquire strong { color: var(--ink-soft); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.document-acquire small { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.document-acquire.ended { opacity: .58; }
+.document-acquire.not_started > i { border: 1px solid #6f7f8f; background: transparent; }
+.document-acquire.active > i { background: var(--success); }
+.data-row:hover .deadline-dot, .data-row:hover .document-acquire > i, .mobile-project-card:hover .deadline-dot, .mobile-project-card:hover .document-acquire > i { transform: scale(1.125); }
 .project-name { position: relative; }
 .project-name button {
   display: block;
@@ -665,6 +675,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .detail-deadline > small { display: block; margin-bottom: 8px; color: #ccc; font-size: 12px; }
 .detail-deadline .deadline-copy strong { color: #fff; font-size: 18px; }
 .detail-deadline .deadline-copy small { color: #ccc; }
+.detail-deadline .time-kind { color: #aaa; }
+.detail-deadline .document-acquire strong { color: #fff; font-size: 15px; }
+.detail-deadline .document-acquire small { color: #ccc; }
+.detail-deadline .document-acquire.ended { opacity: .72; }
 .detail-deadline .deadline-block.warning .deadline-copy small,
 .detail-deadline .deadline-block.danger .deadline-copy small { color: #ddd; }
 .detail-deadline .deadline-block.pending .deadline-copy strong,
@@ -1263,7 +1277,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .project-table { display: none; }
   .mobile-projects { padding: 0 12px 12px; display: grid; gap: 12px; }
   .mobile-project-card { padding: 20px; border: 1px solid var(--hairline); border-radius: 18px; background: #fff; }
-  .mobile-project-card .deadline-block { margin-bottom: 16px; }
+  .mobile-project-card .project-time-stack { margin-bottom: 16px; }
   .mobile-project-card .update-indicator { margin: 0 0 16px; }
   .mobile-project-title { min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--action); text-align: left; font-size: 17px; font-weight: 600; line-height: 1.42; }
   .mobile-project-card > p { margin: 7px 0 16px; color: var(--muted); font-size: 12px; }

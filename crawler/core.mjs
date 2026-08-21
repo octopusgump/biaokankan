@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { bidDeadlinePresentation } from "../shared/project-time.mjs";
 
 const DEFAULT_HEADERS = {
   accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
@@ -155,30 +156,137 @@ function captureLabel(text, labels, maxLength = 100) {
   return "";
 }
 
-function parseChineseDate(value) {
-  const normalized = value.replaceAll("/", "-");
-  const match = normalized.match(/(20\d{2})\s*[年.-]\s*(\d{1,2})\s*[月.-]\s*(\d{1,2})\s*日?\s*(上午|下午)?\s*(\d{1,2})?\s*(?:时|点|:)?\s*(\d{1,2})?\s*分?/);
-  if (!match) return null;
-  let hour = Number(match[5] || 0);
-  if (match[4] === "下午" && hour < 12) hour += 12;
-  const minute = Number(match[6] || 0);
-  return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+function normalizeDateText(value = "") {
+  return String(value)
+    .replaceAll("/", "-")
+    .replaceAll("：", ":")
+    .replaceAll("．", ".")
+    .replace(/(\d)\s+(?=\d)/g, "$1");
 }
 
-function extractDeadline(text, publishedAt) {
-  const labels = ["投标文件递交截止时间", "投标截止时间", "响应文件提交截止时间", "响应文件递交截止时间", "开标时间"];
+function parseChineseDates(value) {
+  const normalized = normalizeDateText(value);
+  const pattern = /(20\d{2})\s*[年.-]\s*(\d{1,2})\s*[月.-]\s*(\d{1,2})\s*日?\s*(上午|下午)?\s*(\d{1,2})?\s*(?:时|点|:)?\s*(\d{1,2})?\s*分?/g;
+  const dates = [];
+  for (const match of normalized.matchAll(pattern)) {
+    let hour = Number(match[5] || 0);
+    if (match[4] === "下午" && hour < 12) hour += 12;
+    const minute = Number(match[6] || 0);
+    dates.push(`${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+  }
+  return dates;
+}
+
+function evidenceNear(text, index, maxLength = 360) {
+  const before = text.slice(Math.max(0, index - maxLength), index);
+  const previousBoundary = Math.max(before.lastIndexOf("。"), before.lastIndexOf("；"), before.lastIndexOf(";"));
+  const start = Math.max(0, index - before.length + previousBoundary + 1);
+  const after = text.slice(index, index + maxLength);
+  const nextBoundary = after.search(/[。；;]/);
+  const end = nextBoundary >= 0 ? index + nextBoundary + 1 : Math.min(text.length, index + maxLength);
+  return text.slice(start, end).replace(/\s+/g, " ").trim();
+}
+
+function collectLabeledDates(text, labels) {
   const candidates = [];
   for (const label of labels) {
     let index = text.indexOf(label);
     while (index >= 0) {
-      const parsed = parseChineseDate(text.slice(index, index + 260));
-      if (parsed) candidates.push(parsed);
+      const evidence = evidenceNear(text, index);
+      for (const date of parseChineseDates(evidence)) candidates.push({ date, evidence, index });
       index = text.indexOf(label, index + label.length);
     }
   }
+  return candidates;
+}
+
+export function extractTimeFields(text, publishedAt) {
+  const deadlineLabels = [
+    "投标文件的上传/递交截止时间",
+    "投标文件上传/递交截止时间",
+    "投标文件递交的截止及开标时间",
+    "投标文件递交的截止时间",
+    "投标文件上传的截止时间",
+    "递交投标文件的截止时间",
+    "投标文件递交截止时间",
+    "投标截止时间及开标时间",
+    "投标截止时间和开标时间",
+    "投标截止时间",
+    "响应文件提交截止时间",
+    "响应文件递交截止时间",
+  ];
+  const candidates = collectLabeledDates(text, deadlineLabels);
+  const sectionTimePattern = /投标文件的递交\s+(?:\d+(?:\.\d+)?[、.]?\s*)?时间\s*[：:]/g;
+  for (const match of text.matchAll(sectionTimePattern)) {
+    const evidence = evidenceNear(text, match.index);
+    for (const date of parseChineseDates(evidence)) candidates.push({ date, evidence, index: match.index });
+  }
+
+  let openingIndex = text.indexOf("开标时间");
+  while (openingIndex >= 0) {
+    const evidence = evidenceNear(text, openingIndex);
+    const explicitlyEqual = /开标时间[^。；;]{0,45}(?:即为|等于|同(?:于)?|与)[^。；;]{0,30}投标截止时间/.test(evidence)
+      || /投标截止时间[^。；;]{0,45}(?:即为|等于|同(?:于)?|与)[^。；;]{0,30}开标时间/.test(evidence);
+    if (explicitlyEqual) {
+      for (const date of parseChineseDates(evidence)) candidates.push({ date, evidence, index: openingIndex });
+    }
+    openingIndex = text.indexOf("开标时间", openingIndex + 4);
+  }
+
   const publishedDate = String(publishedAt).match(/20\d{2}-\d{2}-\d{2}/)?.[0];
-  const plausible = candidates.filter((candidate) => !publishedDate || candidate.slice(0, 10) >= publishedDate);
-  return plausible.sort()[0] || null;
+  const confirmed = candidates
+    .filter((candidate) => !publishedDate || candidate.date.slice(0, 10) >= publishedDate)
+    .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
+
+  let documentRequiredEvidence = null;
+  for (const label of ["投标文件递交截止时间", "投标文件提交截止时间", "投标文件上传截止时间", "投标截止时间"]) {
+    let index = text.indexOf(label);
+    while (index >= 0) {
+      const evidence = evidenceNear(text, index);
+      if (/(?:详?见|以)[^。；;]{0,40}招标文件/.test(evidence)) {
+        documentRequiredEvidence = evidence;
+        break;
+      }
+      index = text.indexOf(label, index + label.length);
+    }
+    if (documentRequiredEvidence) break;
+  }
+
+  const acquireLabels = [
+    "招标文件的获取时间",
+    "招标文件获取时间",
+    "获取招标文件时间",
+    "招标文件的获取",
+    "招标文件获取",
+    "招标文件下载时间",
+    "招标文件下载",
+    "报名时间",
+  ];
+  let documentAcquireStart = null;
+  let documentAcquireDeadline = null;
+  for (const label of acquireLabels) {
+    let index = text.indexOf(label);
+    while (index >= 0) {
+      const evidence = evidenceNear(text, index);
+      const dates = parseChineseDates(evidence);
+      if (dates.length >= 2) {
+        [documentAcquireStart, documentAcquireDeadline] = dates;
+        break;
+      }
+      if (dates.length === 1 && /(?:截止|结束)/.test(evidence)) documentAcquireDeadline = dates[0];
+      else if (dates.length === 1 && /(?:开始|起)/.test(evidence)) documentAcquireStart = dates[0];
+      index = text.indexOf(label, index + label.length);
+    }
+    if (documentAcquireStart || documentAcquireDeadline) break;
+  }
+
+  return {
+    bidDeadline: confirmed?.date || null,
+    bidDeadlineStatus: confirmed ? "confirmed" : documentRequiredEvidence ? "document_required" : "pending",
+    bidDeadlineEvidence: confirmed?.evidence || documentRequiredEvidence,
+    documentAcquireStart,
+    documentAcquireDeadline,
+  };
 }
 
 function extractInvestment(text) {
@@ -239,7 +347,19 @@ function hashNumber(value) {
 
 export function projectFingerprint(project) {
   return createHash("sha256")
-    .update([project.name, project.section, project.investment, project.deadline, project.client, project.agency, project.summary].join("|"))
+    .update([
+      project.name,
+      project.section,
+      project.investment,
+      project.bidDeadline ?? project.deadline,
+      project.bidDeadlineStatus,
+      project.bidDeadlineEvidence,
+      project.documentAcquireStart,
+      project.documentAcquireDeadline,
+      project.client,
+      project.agency,
+      project.summary,
+    ].join("|"))
     .digest("hex");
 }
 
@@ -265,17 +385,8 @@ export function chinaDateKey(date = new Date()) {
   }).format(date);
 }
 
-export function deadlinePresentation(deadline, now = new Date()) {
-  if (!deadline) return { deadlineShort: "待核验", remaining: "时间无法可靠识别", deadlineState: "pending" };
-  const instant = new Date(`${deadline.replace(" ", "T")}:00+08:00`);
-  const diff = instant.getTime() - now.getTime();
-  const deadlineShort = `${deadline.slice(5, 7)}月${deadline.slice(8, 10)}日 ${deadline.slice(11, 16)}`;
-  if (!Number.isFinite(diff)) return { deadlineShort: "待核验", remaining: "时间无法可靠识别", deadlineState: "pending" };
-  if (diff <= 0) return { deadlineShort, remaining: "已截止", deadlineState: "expired" };
-  const days = Math.ceil(diff / 86_400_000);
-  if (days <= 1) return { deadlineShort, remaining: "剩余 1 天", deadlineState: "danger" };
-  if (days <= 3) return { deadlineShort, remaining: `剩余 ${days} 天`, deadlineState: "warning" };
-  return { deadlineShort, remaining: `剩余 ${days} 天`, deadlineState: "normal" };
+export function deadlinePresentation(deadline, now = new Date(), status = deadline ? "confirmed" : "pending") {
+  return bidDeadlinePresentation(deadline, status, now);
 }
 
 export function retainProjectWithLatestLinkState(project, source) {
@@ -298,8 +409,8 @@ export function retainProjectWithLatestLinkState(project, source) {
 export function extractProject({ title, html, text: providedText, url, publishedAt, source, originalAvailable = true, linkFailureReason = null }, now = new Date()) {
   const text = flattenText(html || providedText);
   if (!isSupervisionText(`${title} ${text}`)) return null;
-  const deadline = extractDeadline(text, normalizePublishedAt(publishedAt));
-  const presentation = deadlinePresentation(deadline, now);
+  const timeFields = extractTimeFields(text, normalizePublishedAt(publishedAt));
+  const presentation = deadlinePresentation(timeFields.bidDeadline, now, timeFields.bidDeadlineStatus);
   const agencyFromDelegation = text.match(/(?:现)?委托\s*([^，。；;]{2,80}(?:有限公司|事务所))/)?.[1]?.trim();
   const project = {
     id: hashNumber(url),
@@ -307,7 +418,9 @@ export function extractProject({ title, html, text: providedText, url, published
     section: extractSection(title, text),
     category: inferCategory(`${title} ${text}`),
     investment: extractInvestment(text),
-    deadline,
+    ...timeFields,
+    bidDeadlineVerifiedAt: timeFields.bidDeadlineStatus === "confirmed" ? formatChinaTime(now).slice(0, 16) : null,
+    deadline: timeFields.bidDeadline,
     ...presentation,
     client: captureLabel(text, ["项目业主及招标人", "招标人", "采购人"], 100) || "待核验",
     agency: captureLabel(text, ["招标代理机构", "采购代理机构", "代理机构"], 100) || agencyFromDelegation || "待核验",
@@ -329,7 +442,7 @@ export function extractProject({ title, html, text: providedText, url, published
     createdToday: normalizePublishedAt(publishedAt).slice(0, 10) === chinaDateKey(now),
     pendingFields: [],
   };
-  if (!deadline) project.pendingFields.push("投标截止时间");
+  if (timeFields.bidDeadlineStatus !== "confirmed") project.pendingFields.push("投标截止时间");
   if (project.investment === "待核验") project.pendingFields.push("总投资");
   if (project.client === "待核验") project.pendingFields.push("招标人");
   if (project.agency === "待核验") project.pendingFields.push("招标代理机构");
