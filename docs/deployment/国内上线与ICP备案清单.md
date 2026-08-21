@@ -52,16 +52,11 @@ policeRecordUrl: "公安备案系统提供的查询链接",
 pnpm run build:china
 ```
 
-把生成的 `china-dist` 目录完整上传到服务器网站根目录，使用 Nginx 托管。示例配置已经放在 `deploy/china/nginx.conf`。
+把生成的 `china-dist` 目录完整上传到 `/var/www/biaokankan/releases/<版本号>`，验收后将 `/var/www/biaokankan/current` 指向该版本。使用 `deploy/china/nginx.conf` 托管，并按[《第一阶段访问控制上线手册》](./第一阶段访问控制上线手册.md)准备公司公网 IP、企业凭证、HTTPS 和 Fail2ban。
 
 ### 方案 B：Docker 部署
 
-```bash
-docker build -f Dockerfile.china -t biaokankan .
-docker run -d --name biaokankan -p 80:80 biaokankan
-```
-
-正式环境还应在云厂商控制台配置 HTTPS 证书，并把 80 端口跳转到 443。
+Docker 镜像也采用同一份保护配置，必须只读挂载 HTTPS 证书、`trusted-networks.conf` 和 `.htpasswd`，并把 Nginx 日志挂载给宿主机 Fail2ban。容器启动脚本会检查这些文件，缺少任何一个时直接停止，不能退回公开模式。首次上线优先使用方案 A，避免容器文件权限和宿主机封禁规则增加排障成本。
 
 ## 四、上线顺序
 

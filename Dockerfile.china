@@ -11,6 +11,8 @@ RUN pnpm run build:china
 
 FROM nginx:1.27-alpine
 COPY deploy/china/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/china-dist /usr/share/nginx/html
+COPY deploy/china/check-access-control.sh /docker-entrypoint.d/10-biaokankan-access-control.sh
+COPY --from=builder /app/china-dist /var/www/biaokankan/current
+RUN mkdir -p /etc/nginx/biaokankan && chmod 755 /docker-entrypoint.d/10-biaokankan-access-control.sh
 
-EXPOSE 80
+EXPOSE 80 443

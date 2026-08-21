@@ -21,6 +21,9 @@
 # misc
 .DS_Store
 *.pem
+*.htpasswd
+/deploy/china/trusted-networks.conf
+/deploy/china/secrets/
 
 # debug
 npm-debug.log*

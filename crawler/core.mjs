@@ -291,9 +291,8 @@ export function extractTimeFields(text, publishedAt) {
 
 function extractInvestment(text) {
   const patterns = [
-    /(?:项目)?总投资(?:为|约|：|:)?\s*(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*万元/,
-    /(?:工程)?总投资(?:为|约|：|:)?\s*(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*万元/,
-    /建安费(?:估算)?(?:为|约|：|:)?\s*(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*万元/,
+    /(?:本)?(?:项目|工程)?总投资(?:(?:\s*[：:]\s*)|(?:\s*(?:约|为)\s*)){0,3}(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*万元/,
+    /建安费(?:估算)?(?:(?:\s*[：:]\s*)|(?:\s*(?:约|为)\s*)){0,3}(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*万元/,
   ];
   for (const pattern of patterns) {
     const value = text.match(pattern)?.[1];

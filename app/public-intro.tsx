@@ -1,20 +1,172 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { siteConfig } from "./site-config";
 
+type PreviewProject = {
+  id: number;
+  name: string;
+  section: string;
+  investment: string;
+  deadlineShort: string;
+  remaining: string;
+  deadlineState: "normal" | "warning" | "danger" | "expired" | "pending";
+  source: string;
+};
+
+type PreviewSnapshot = {
+  generatedAt: string | null;
+  projects: PreviewProject[];
+  sources: unknown[];
+  errors: unknown[];
+  summary: {
+    newProjectCount: number;
+    expiringWithin3DaysCount: number;
+    abnormalSourceCount: number;
+  } | null;
+};
+
+type PreviewState = "loading" | "ready" | "empty" | "error";
+
 const workflow = [
-  ["每天巡检", "每天 07:30 定时访问 18 个已适配的公共资源交易中心。"],
-  ["整理关键信息", "提取项目名称、标段、总投资、招标人、代理机构与投标截止时间。"],
-  ["生成每日汇总", "从同一份真实项目快照计算今日新增、3 天内截止和运行异常。"],
+  ["每天巡检", "每天 07:30 访问已适配的公共资源交易中心，持续发现新的监理招标公告。"],
+  ["识别与整理", "提取项目、标段、投资、关键单位与截止时间，不确定字段明确标注待核验。"],
+  ["汇总与回源", "生成同一份真实项目快照，并保留原公告入口供投标人员完成最终判断。"],
 ];
 
 const boundaries = [
   "只整理公开招标信息，不代替原公告与招标文件",
-  "识别不确定的内容明确标注“待核验”，不猜测",
+  "识别不确定的内容明确标注待核验，不进行猜测",
   "首版不做投标决策、机会评分和自动投标",
 ];
 
-export function PublicIntro() {
+function formatGeneratedAt(value: string | null) {
+  if (!value) return "等待首次扫描";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "最近一次扫描";
+  return `${date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" })} ${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+}
+
+function ProductPreview({ snapshot, state }: { snapshot: PreviewSnapshot | null; state: PreviewState }) {
+  const projects = useMemo(() => {
+    if (!snapshot) return [];
+    const active = snapshot.projects.filter((project) => project.deadlineState !== "expired");
+    return (active.length ? active : snapshot.projects).slice(0, 3);
+  }, [snapshot]);
+
+  const statusMessage = state === "loading"
+    ? "正在读取真实扫描数据"
+    : state === "error"
+      ? "项目数据暂时无法读取"
+      : state === "empty"
+        ? "扫描完成后，真实项目会显示在这里"
+        : `已载入 ${snapshot?.projects.length ?? 0} 条真实项目`;
+
   return (
-    <section className="public-site" aria-label="产品介绍">
+    <div className="product-preview" aria-label="真实项目雷达预览">
+      <p className="visually-hidden" role="status" aria-atomic="true">{statusMessage}</p>
+      <div className="product-preview-bar">
+        <span className="product-preview-mark">标</span>
+        <strong>项目雷达</strong>
+        <small>{formatGeneratedAt(snapshot?.generatedAt ?? null)}</small>
+      </div>
+
+      {state === "loading" && (
+        <div className="product-preview-loading" aria-label="正在读取真实扫描数据">
+          <div className="preview-skeleton-summary" />
+          <div className="preview-skeleton-row" />
+          <div className="preview-skeleton-row" />
+          <div className="preview-skeleton-row" />
+        </div>
+      )}
+
+      {state === "error" && (
+        <div className="product-preview-message">
+          <strong>项目数据暂时无法读取</strong>
+          <span>系统不会使用演示项目替代真实数据。</span>
+          <a href="./radar/">进入项目雷达</a>
+        </div>
+      )}
+
+      {state === "empty" && (
+        <div className="product-preview-message">
+          <strong>等待首次扫描</strong>
+          <span>扫描完成后，真实项目会显示在这里。</span>
+        </div>
+      )}
+
+      {state === "ready" && snapshot && (
+        <>
+          <div className="product-preview-summary" aria-label="扫描汇总">
+            <div><span>今日新增</span><strong>{snapshot.summary?.newProjectCount ?? 0}</strong></div>
+            <div><span>3 天内截止</span><strong>{snapshot.summary?.expiringWithin3DaysCount ?? 0}</strong></div>
+            <div><span>真实项目</span><strong>{snapshot.projects.length}</strong></div>
+          </div>
+          <div className="product-preview-list">
+            {projects.map((project) => (
+              <a key={project.id} href={`./radar/project/?id=${project.id}`} className="product-preview-row">
+                <span className={`preview-deadline ${project.deadlineState}`}>
+                  <b>{project.deadlineShort}</b>
+                  <small>{project.remaining}</small>
+                </span>
+                <span className="preview-project-copy">
+                  <strong>{project.name}</strong>
+                  <small>{project.source}</small>
+                </span>
+                <span className="preview-project-action">查看详情</span>
+              </a>
+            ))}
+          </div>
+          <div className="product-preview-foot">
+            <span>数据来自公开招标公告</span>
+            <a href="./radar/">查看全部项目</a>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function PublicIntro() {
+  const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
+  const [previewState, setPreviewState] = useState<PreviewState>("loading");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch("./data/radar.json", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("snapshot unavailable");
+        const data = await response.json() as PreviewSnapshot;
+        if (!Array.isArray(data.projects) || !Array.isArray(data.sources)) throw new Error("invalid snapshot");
+        setSnapshot(data);
+        setPreviewState(data.projects.length ? "ready" : "empty");
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") setPreviewState("error");
+      }
+    })();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mobileMenuOpen]);
+
+  const metrics = [
+    [snapshot ? `${snapshot.sources.length} 个` : "--", "已适配真实信息源"],
+    [snapshot ? `${snapshot.projects.length} 条` : "--", "本次真实项目记录"],
+    [snapshot?.summary ? `${snapshot.summary.newProjectCount} 条` : "--", "今日新增项目"],
+    [snapshot?.summary ? `${snapshot.summary.abnormalSourceCount} 个` : "--", "异常信息源"],
+  ];
+
+  return (
+    <main className="public-site" aria-label="产品介绍">
       <header className="public-nav">
         <a className="public-brand" href="#top" aria-label={`${siteConfig.productName}首页`}>
           <span>标</span>
@@ -24,44 +176,49 @@ export function PublicIntro() {
           <a href="#how-it-works">工作方式</a>
           <a href="#product-boundary">产品边界</a>
         </nav>
+        <div className="public-mobile-navigation">
+          <button
+            type="button"
+            className="public-mobile-menu-button"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="public-mobile-menu"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            菜单
+          </button>
+          <div id="public-mobile-menu" className="public-mobile-menu" hidden={!mobileMenuOpen}>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>工作方式</a>
+            <a href="#product-boundary" onClick={() => setMobileMenuOpen(false)}>产品边界</a>
+          </div>
+        </div>
         <a className="public-nav-action" href="./radar/">进入项目雷达</a>
       </header>
 
-      <div className="public-hero" id="top">
+      <section className="public-hero" id="top">
         <div className="public-hero-copy">
-          <p className="public-kicker">{siteConfig.fullName}</p>
-          <h1>帮监理企业更早发现<br />值得跟进的标讯。</h1>
-          <p className="public-lead">每天巡检 18 个已接入的公共资源交易网站，把截止时间、项目规模和关键单位整理成一张表。所有项目都能回到自己的原公告核验。</p>
+          <p className="public-kicker">监理标讯助手</p>
+          <h1>帮监理企业更早发现值得跟进的标讯</h1>
+          <p className="public-lead">每天巡检 18 个已接入来源，整理截止时间、项目规模与关键单位，并保留原公告入口供人工核验。</p>
           <div className="public-actions">
             <a className="public-primary" href="./radar/">进入项目雷达</a>
-            <a className="public-secondary" href="#how-it-works">了解怎么工作</a>
+            <a className="public-secondary" href="#how-it-works">了解工作方式</a>
           </div>
         </div>
+        <ProductPreview snapshot={snapshot} state={previewState} />
+      </section>
 
-        <div className="radar-visual" aria-label="招标信息处理示意">
-          <div className="radar-visual-head"><span>真实数据闭环</span><small>每日 07:30 扫描</small></div>
-          <div className="radar-counts">
-            <div><small>已接入来源</small><strong>18</strong><span>公共资源交易中心</span></div>
-            <div className="urgent"><small>每日汇总</small><strong>1</strong><span>同日扫描只更新</span></div>
-          </div>
-          <div className="radar-row"><i /><span><b>项目与公告一一对应</b><small>项目名称、正文与原公告域名共同核验</small></span><em>真实数据</em></div>
-          <div className="radar-row"><i className="amber" /><span><b>原公告访问异常</b><small>明确提示后回到该来源的公告列表或主页</small></span><em>可核验</em></div>
-          <div className="radar-row"><i /><span><b>字段无法可靠识别</b><small>显示“待核验”，不猜测、不用演示内容替代</small></span><em>克制</em></div>
-          <div className="radar-visual-foot">信息最终以原公告和招标文件为准</div>
+      <section className="public-value-strip" aria-label="最新扫描数据">
+        {metrics.map(([value, label]) => (
+          <div key={label}><strong>{value}</strong><span>{label}</span></div>
+        ))}
+      </section>
+
+      <section className="public-section workflow-section" id="how-it-works">
+        <div className="public-section-heading">
+          <h2>系统负责发现和整理，人负责判断与决策</h2>
+          <p>把重复的信息巡检交给系统，把最终判断留给专业人员。</p>
         </div>
-      </div>
-
-      <div className="public-value-strip" aria-label="产品特点">
-        <div><strong>18 个</strong><span>已适配真实信息源</span></div>
-        <div><strong>一张表</strong><span>看清项目和截止时间</span></div>
-        <div><strong>每日一份</strong><span>真实项目汇总数据</span></div>
-        <div><strong>原公告直达</strong><span>所有结论可回源核验</span></div>
-      </div>
-
-      <section className="public-section" id="how-it-works">
-        <p className="public-kicker">工作方式</p>
-        <h2>系统负责发现和整理，<br />人负责判断与决策。</h2>
-        <div className="workflow-grid">
+        <div className="workflow-list">
           {workflow.map(([title, copy]) => (
             <article key={title}>
               <h3>{title}</h3>
@@ -71,16 +228,16 @@ export function PublicIntro() {
         </div>
       </section>
 
-      <section className="boundary-section" id="product-boundary">
+      <section className="public-section boundary-section" id="product-boundary">
         <div>
-          <p className="public-kicker">清楚、克制、可核验</p>
-          <h2>它不是“自动投标神器”，<br />而是一名勤快的信息助理。</h2>
+          <h2>清楚说明边界，才能长期可信</h2>
+          <p>标看看是一名勤快的信息助理，不替代投标团队的专业判断。</p>
         </div>
         <ul>
-          {boundaries.map((item) => <li key={item}><span>✓</span>{item}</li>)}
+          {boundaries.map((item) => <li key={item}>{item}</li>)}
         </ul>
       </section>
-    </section>
+    </main>
   );
 }
 

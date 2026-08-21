@@ -44,6 +44,28 @@ test("extracts the PRD sample fields without guessing", () => {
   assert.equal(project.linkStatus, "available");
 });
 
+test("extracts investments when punctuation and approximation qualifiers are chained", () => {
+  const cases = [
+    ["2.4 本工程总投资：约4650万元。其中施工约4600万元，监理约50万元。", "4,650.00 万元"],
+    ["项目总投资: 约 6961.37 万元。", "6,961.37 万元"],
+    ["工程总投资约为8000万元。", "8,000.00 万元"],
+    ["总投资为约1200万元。", "1,200.00 万元"],
+  ];
+
+  for (const [sentence, expected] of cases) {
+    const project = extractProject({
+      title: "投资格式测试监理项目",
+      html: `<h2>投资格式测试监理项目</h2><p>${sentence}</p>`,
+      url: `https://example.test/investment/${encodeURIComponent(sentence)}`,
+      publishedAt: "2026-08-01",
+      source,
+    }, new Date("2026-08-01T00:00:00+08:00"));
+
+    assert.ok(project);
+    assert.equal(project.investment, expected, sentence);
+  }
+});
+
 test("prefers the original announcement body over its list summary", () => {
   const title = "原阳县原兴路、文岩街、惠民街、新一路雨污水管网及新一路污水提升泵站新建工程1标段、2标段、3标段";
   const listText = `[河南省·新乡市·新乡市] [公开招标] [监理] ${title} [正在报名]`;

@@ -1,0 +1,6 @@
+# 复制到服务器：/etc/nginx/biaokankan/trusted-networks.conf
+# 这里只能填写公司网络真实的公网出口地址，不能填写 192.168.x.x 等局域网地址。
+# 每行必须以 allow 开头并以分号结尾；IPv4 单地址使用 /32。
+
+allow 203.0.113.10/32;
+# allow 2001:db8:1234::/64;
