@@ -235,6 +235,28 @@ test("explicit document-required deadlines override every nearby date", () => {
   }
 });
 
+test("P0-1 distinguishes earliest, latest, and nearest deadline strategies", () => {
+  const sentence = "报名自2026年8月3日开始，投标文件递交截止时间为2026年8月24日09时30分，补充文件于2026年8月30日发布。";
+  const project = extractSentence(sentence);
+  assert.equal(project.bidDeadline, "2026-08-24 09:30");
+  assert.equal(project.bidDeadlineStatus, "confirmed");
+});
+
+test("resolves deadline ranges and rejects ambiguous date alternatives", () => {
+  const cases = [
+    ["投标截止时间：自2026年8月5日起至2026年8月24日09时30分止。", "2026-08-24 09:30", "confirmed"],
+    ["投标文件递交截止时间为2026年8月24日09时30分，开标时间2026年8月24日09时30分，报名自2026年8月3日开始。", "2026-08-24 09:30", "confirmed"],
+    ["5.1 投标文件上传的截止时间：2026年08月24日09时30分（其中2026年08月10日前完成注册）。", "2026-08-24 09:30", "confirmed"],
+    ["投标截止时间：2026年8月24日09时30分或2026年8月25日09时30分，以交易系统显示为准。", null, "pending"],
+  ];
+
+  for (const [sentence, deadline, status] of cases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, deadline, sentence);
+    assert.equal(project.bidDeadlineStatus, status, sentence);
+  }
+});
+
 test("does not treat a later document-download date as the bid deadline", () => {
   const project = extractProject({
     title: "[监理]截止时间邻近性测试工程",

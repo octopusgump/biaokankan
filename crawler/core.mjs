@@ -179,35 +179,92 @@ function normalizeInstitution(value) {
   return institutionSuffix.test(normalized) ? normalized : "";
 }
 
-function normalizeDateText(value = "") {
-  return String(value)
+function normalizeDateTextWithOffsets(value = "") {
+  const canonical = String(value)
     .replaceAll("/", "-")
     .replaceAll("：", ":")
-    .replaceAll("．", ".")
-    .replace(/(\d)\s+(?=\d)/g, "$1");
+    .replaceAll("．", ".");
+  let text = "";
+  const offsets = [];
+  for (let index = 0; index < canonical.length; index += 1) {
+    const character = canonical[index];
+    const nextCharacter = canonical.slice(index + 1).match(/\S/)?.[0];
+    if (/\s/.test(character) && /\d/.test(canonical[index - 1] || "") && /\d/.test(nextCharacter || "")) continue;
+    text += character;
+    offsets.push(index);
+  }
+  return { text, offsets };
 }
 
-function parseChineseDates(value) {
-  const normalized = normalizeDateText(value);
+function parseChineseDateMatches(value) {
+  const { text: normalized, offsets } = normalizeDateTextWithOffsets(value);
   const pattern = /(20\d{2})\s*[年.-]\s*(\d{1,2})\s*[月.-]\s*(\d{1,2})\s*日?\s*(上午|下午)?\s*(\d{1,2})?\s*(?:时|点|:)?\s*(\d{1,2})?\s*分?/g;
   const dates = [];
   for (const match of normalized.matchAll(pattern)) {
     let hour = Number(match[5] || 0);
     if (match[4] === "下午" && hour < 12) hour += 12;
     const minute = Number(match[6] || 0);
-    dates.push(`${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+    const normalizedEnd = match.index + match[0].length - 1;
+    dates.push({
+      date: `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+      offset: offsets[match.index],
+      end: offsets[normalizedEnd] + 1,
+    });
   }
   return dates;
 }
 
-function evidenceNear(text, index, maxLength = 360) {
+function parseChineseDates(value) {
+  return parseChineseDateMatches(value).map((match) => match.date);
+}
+
+function evidenceWindow(text, index, maxLength = 360) {
   const before = text.slice(Math.max(0, index - maxLength), index);
   const previousBoundary = Math.max(before.lastIndexOf("。"), before.lastIndexOf("；"), before.lastIndexOf(";"));
   const start = Math.max(0, index - before.length + previousBoundary + 1);
   const after = text.slice(index, index + maxLength);
   const nextBoundary = after.search(/[。；;]/);
   const end = nextBoundary >= 0 ? index + nextBoundary + 1 : Math.min(text.length, index + maxLength);
-  return text.slice(start, end).replace(/\s+/g, " ").trim();
+  const raw = text.slice(start, end);
+  return { raw, start, evidence: raw.replace(/\s+/g, " ").trim() };
+}
+
+function evidenceNear(text, index, maxLength = 360) {
+  return evidenceWindow(text, index, maxLength).evidence;
+}
+
+function dateCandidatesNear(text, index, labelLength) {
+  const window = evidenceWindow(text, index);
+  const matches = parseChineseDateMatches(window.raw);
+  const candidates = matches.map((match) => {
+    const dateStart = window.start + match.offset;
+    const dateEnd = window.start + match.end;
+    const labelEnd = index + labelLength;
+    const distance = dateStart >= labelEnd
+      ? dateStart - labelEnd
+      : index >= dateEnd
+        ? index - dateEnd
+        : 0;
+    return {
+      date: match.date,
+      evidence: window.evidence,
+      index,
+      dateOffset: match.offset,
+      distance,
+      ambiguous: false,
+      rangeEnd: null,
+    };
+  });
+  for (let matchIndex = 1; matchIndex < matches.length; matchIndex += 1) {
+    const between = window.raw.slice(matches[matchIndex - 1].end, matches[matchIndex].offset);
+    if (/^\s*(?:起)?\s*(?:至|到)\s*$/.test(between)) {
+      candidates[matchIndex - 1].rangeEnd = candidates[matchIndex];
+    } else if (/(?:或|或者)/.test(between)) {
+      candidates[matchIndex - 1].ambiguous = true;
+      candidates[matchIndex].ambiguous = true;
+    }
+  }
+  return candidates;
 }
 
 function collectLabeledDates(text, labels) {
@@ -215,12 +272,28 @@ function collectLabeledDates(text, labels) {
   for (const label of labels) {
     let index = text.indexOf(label);
     while (index >= 0) {
-      const evidence = evidenceNear(text, index);
-      for (const date of parseChineseDates(evidence)) candidates.push({ date, evidence, index });
+      candidates.push(...dateCandidatesNear(text, index, label.length));
       index = text.indexOf(label, index + label.length);
     }
   }
   return candidates;
+}
+
+function selectDeadlineCandidate(candidates, publishedDate) {
+  const eligible = candidates.filter((candidate) => !publishedDate || candidate.date.slice(0, 10) >= publishedDate);
+  if (!eligible.length) return { candidate: null, evidence: null };
+  const nearestDistance = Math.min(...eligible.map((candidate) => candidate.distance));
+  const nearest = eligible.filter((candidate) => candidate.distance === nearestDistance);
+  const distinctDates = new Set(nearest.map((candidate) => candidate.date));
+  if (distinctDates.size !== 1) return { candidate: null, evidence: nearest[0].evidence };
+
+  let candidate = nearest[0];
+  if (candidate.ambiguous) return { candidate: null, evidence: candidate.evidence };
+  if (candidate.rangeEnd) candidate = candidate.rangeEnd;
+  if (publishedDate && candidate.date.slice(0, 10) < publishedDate) {
+    return { candidate: null, evidence: candidate.evidence };
+  }
+  return { candidate, evidence: candidate.evidence };
 }
 
 export function extractTimeFields(text, publishedAt) {
@@ -241,8 +314,7 @@ export function extractTimeFields(text, publishedAt) {
   const candidates = collectLabeledDates(text, DEADLINE_LABELS);
   const sectionTimePattern = /投标文件的递交\s+(?:\d+(?:\.\d+)?[、.]?\s*)?时间\s*[：:]/g;
   for (const match of text.matchAll(sectionTimePattern)) {
-    const evidence = evidenceNear(text, match.index);
-    for (const date of parseChineseDates(evidence)) candidates.push({ date, evidence, index: match.index });
+    candidates.push(...dateCandidatesNear(text, match.index, match[0].length));
   }
 
   let openingIndex = text.indexOf("开标时间");
@@ -251,15 +323,14 @@ export function extractTimeFields(text, publishedAt) {
     const explicitlyEqual = /开标时间[^。；;]{0,45}(?:即为|等于|同(?:于)?|与)[^。；;]{0,30}投标截止时间/.test(evidence)
       || /投标截止时间[^。；;]{0,45}(?:即为|等于|同(?:于)?|与)[^。；;]{0,30}开标时间/.test(evidence);
     if (explicitlyEqual) {
-      for (const date of parseChineseDates(evidence)) candidates.push({ date, evidence, index: openingIndex });
+      candidates.push(...dateCandidatesNear(text, openingIndex, "开标时间".length));
     }
     openingIndex = text.indexOf("开标时间", openingIndex + 4);
   }
 
   const publishedDate = String(publishedAt).match(/20\d{2}-\d{2}-\d{2}/)?.[0];
-  const confirmed = candidates
-    .filter((candidate) => !publishedDate || candidate.date.slice(0, 10) >= publishedDate)
-    .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
+  const selection = selectDeadlineCandidate(candidates, publishedDate);
+  const confirmed = selection.candidate;
 
   const acquireLabels = [
     "招标文件的获取时间",
@@ -292,7 +363,7 @@ export function extractTimeFields(text, publishedAt) {
   return {
     bidDeadline: documentRequiredEvidence ? null : confirmed?.date || null,
     bidDeadlineStatus: documentRequiredEvidence ? "document_required" : confirmed ? "confirmed" : "pending",
-    bidDeadlineEvidence: documentRequiredEvidence || confirmed?.evidence || null,
+    bidDeadlineEvidence: documentRequiredEvidence || confirmed?.evidence || selection.evidence,
     documentAcquireStart,
     documentAcquireDeadline,
   };
