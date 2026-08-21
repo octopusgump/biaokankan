@@ -164,12 +164,19 @@ function captureLabel(text, labels, maxLength = 100) {
     const value = text.match(pattern)?.[1]?.trim();
     if (value) {
       return value
-        .replace(/\s*(?:投资总额|总投资|资金来源|建设资金|项目概况|招标范围|招标代理机构|采购代理机构|地址|地 址|项目负责人|联系人|电 话|监督单位|监管部门)\s*[：:]?.*$/, "")
+        .replace(/\s*(?:投资总额|总投资|资金来源|建设资金|项目概况|招标范围|招标代理机构|采购代理机构|代理机构|地址|地 址|项目负责人|联系人|联系电话|电\s*话|传真|电子?邮箱|邮箱|开户行|监督单位|监管部门)\s*[：:]?.*$/, "")
         .replace(/\s*(?:2\.|二、|三、).*$/, "")
         .trim();
     }
   }
   return "";
+}
+
+function normalizeInstitution(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized || /^(?:详见招标文件|见招标文件|待定|无|-|\/)$/i.test(normalized)) return "";
+  const institutionSuffix = /(?:公司|局|中心|管理处|政府|集团|院|所|委员会|指挥部|办公室|学校|医院|银行|协会|合作社|项目部)(?:[（(][^）)]*[）)])?$/;
+  return institutionSuffix.test(normalized) ? normalized : "";
 }
 
 function normalizeDateText(value = "") {
@@ -413,6 +420,10 @@ export function extractProject({ title, html, text: providedText, url, published
   const timeFields = extractTimeFields(text, normalizePublishedAt(publishedAt));
   const presentation = deadlinePresentation(timeFields.bidDeadline, now, timeFields.bidDeadlineStatus);
   const agencyFromDelegation = text.match(/(?:现)?委托\s*([^，。；;]{2,80}(?:有限公司|事务所))/)?.[1]?.trim();
+  const client = normalizeInstitution(captureLabel(text, ["项目业主及招标人", "招标人", "采购人"], 100)) || "待核验";
+  const agency = normalizeInstitution(captureLabel(text, ["招标代理机构", "采购代理机构", "代理机构"], 100))
+    || normalizeInstitution(agencyFromDelegation)
+    || "待核验";
   const project = {
     id: hashNumber(url),
     name: cleanProjectName(title, text),
@@ -423,8 +434,8 @@ export function extractProject({ title, html, text: providedText, url, published
     bidDeadlineVerifiedAt: timeFields.bidDeadlineStatus === "confirmed" ? formatChinaTime(now).slice(0, 16) : null,
     deadline: timeFields.bidDeadline,
     ...presentation,
-    client: captureLabel(text, ["项目业主及招标人", "招标人", "采购人"], 100) || "待核验",
-    agency: captureLabel(text, ["招标代理机构", "采购代理机构", "代理机构"], 100) || agencyFromDelegation || "待核验",
+    client,
+    agency,
     source: source.name,
     sourceType: source.type,
     url,

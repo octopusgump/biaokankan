@@ -76,6 +76,34 @@ test("extracts investments when punctuation and approximation qualifiers are cha
   }
 });
 
+test("rejects institution placeholders and strips trailing contact fields", () => {
+  const placeholderCases = [
+    {
+      sentence: "招标人：详见招标文件 招标代理机构：见招标文件。",
+      pending: ["招标人", "招标代理机构"],
+    },
+    {
+      sentence: "本项目招标人为：待定。",
+      pending: ["招标人"],
+    },
+    {
+      sentence: "招标人：/ 代理机构：无。",
+      pending: ["招标人", "招标代理机构"],
+    },
+  ];
+
+  for (const { sentence, pending } of placeholderCases) {
+    const project = extractSentence(sentence);
+    for (const field of pending) assert.equal(project.pendingFields.includes(field), true, `${sentence} ${field}`);
+    if (pending.includes("招标人")) assert.equal(project.client, "待核验", sentence);
+    if (pending.includes("招标代理机构")) assert.equal(project.agency, "待核验", sentence);
+  }
+
+  const cleaned = extractSentence("招标人：郑州市城建局 联系电话：0371-12345678 传真：0371-1 邮箱：test@example.test。");
+  assert.equal(cleaned.client, "郑州市城建局");
+  assert.equal(cleaned.pendingFields.includes("招标人"), false);
+});
+
 test("prefers the original announcement body over its list summary", () => {
   const title = "原阳县原兴路、文岩街、惠民街、新一路雨污水管网及新一路污水提升泵站新建工程1标段、2标段、3标段";
   const listText = `[河南省·新乡市·新乡市] [公开招标] [监理] ${title} [正在报名]`;
