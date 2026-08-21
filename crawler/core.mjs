@@ -9,6 +9,22 @@ const DEFAULT_HEADERS = {
 
 const BLOCK_TAGS = /<\/(?:p|div|li|tr|h[1-6]|section|article|br)>|<br\s*\/?>/gi;
 const TAGS = /<[^>]+>/g;
+const DEADLINE_LABELS = [
+  "投标文件的上传/递交截止时间",
+  "投标文件上传/递交截止时间",
+  "投标文件递交的截止及开标时间",
+  "投标文件递交的截止时间",
+  "投标文件上传的截止时间",
+  "递交投标文件的截止时间",
+  "投标文件递交截止时间",
+  "投标文件提交截止时间",
+  "投标文件上传截止时间",
+  "投标截止时间及开标时间",
+  "投标截止时间和开标时间",
+  "投标截止时间",
+  "响应文件提交截止时间",
+  "响应文件递交截止时间",
+];
 
 export function decodeHtml(input = "") {
   return String(input)
@@ -201,21 +217,7 @@ function collectLabeledDates(text, labels) {
 }
 
 export function extractTimeFields(text, publishedAt) {
-  const deadlineLabels = [
-    "投标文件的上传/递交截止时间",
-    "投标文件上传/递交截止时间",
-    "投标文件递交的截止及开标时间",
-    "投标文件递交的截止时间",
-    "投标文件上传的截止时间",
-    "递交投标文件的截止时间",
-    "投标文件递交截止时间",
-    "投标截止时间及开标时间",
-    "投标截止时间和开标时间",
-    "投标截止时间",
-    "响应文件提交截止时间",
-    "响应文件递交截止时间",
-  ];
-  const candidates = collectLabeledDates(text, deadlineLabels);
+  const candidates = collectLabeledDates(text, DEADLINE_LABELS);
   const sectionTimePattern = /投标文件的递交\s+(?:\d+(?:\.\d+)?[、.]?\s*)?时间\s*[：:]/g;
   for (const match of text.matchAll(sectionTimePattern)) {
     const evidence = evidenceNear(text, match.index);
@@ -239,7 +241,7 @@ export function extractTimeFields(text, publishedAt) {
     .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
 
   let documentRequiredEvidence = null;
-  for (const label of ["投标文件递交截止时间", "投标文件提交截止时间", "投标文件上传截止时间", "投标截止时间"]) {
+  for (const label of DEADLINE_LABELS) {
     let index = text.indexOf(label);
     while (index >= 0) {
       const evidence = evidenceNear(text, index);

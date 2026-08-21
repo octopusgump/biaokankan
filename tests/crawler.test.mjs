@@ -12,6 +12,16 @@ const source = {
   region: "河南省 · 开封市 · 通许县",
 };
 
+function extractSentence(sentence, title = "截止时间语义测试监理项目") {
+  return extractProject({
+    title,
+    html: `<h2>${title}</h2><p>${sentence}</p>`,
+    url: `https://example.test/${encodeURIComponent(sentence)}`,
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+}
+
 test("extracts the PRD sample fields without guessing", () => {
   const html = `
     <h2>通许县宏达大道（人民路-第一污水处理厂）排水管网改造工程-第二标段招标公告</h2>
@@ -120,6 +130,28 @@ test("normalizes fragmented dates and common deadline label variants", () => {
 
     assert.ok(project);
     assert.equal(project.deadline, expected, sentence);
+  }
+});
+
+test("uses one complete label set for confirmed and document-required deadlines", () => {
+  const confirmedCases = [
+    "投标文件提交截止时间：2026年8月24日09时30分。",
+    "投标文件上传截止时间：2026年8月24日09时30分。",
+  ];
+  for (const sentence of confirmedCases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, "2026-08-24 09:30", sentence);
+    assert.equal(project.bidDeadlineStatus, "confirmed", sentence);
+  }
+
+  const documentRequiredCases = [
+    "响应文件提交截止时间：详见招标文件。",
+    "响应文件递交截止时间：见招标文件。",
+  ];
+  for (const sentence of documentRequiredCases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, null, sentence);
+    assert.equal(project.bidDeadlineStatus, "document_required", sentence);
   }
 });
 
