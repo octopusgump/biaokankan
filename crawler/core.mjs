@@ -328,9 +328,9 @@ function cleanProjectName(title, text) {
 
 function extractSection(title, text) {
   const source = `${title} ${text.slice(0, 2500)}`;
-  const monitorSection = source.match(/(第[一二三四五六七八九十\d]+标段)[^。；\n]{0,45}监理|监理[^。；\n]{0,45}(第[一二三四五六七八九十\d]+标段)/);
-  if (monitorSection) return monitorSection[1] || monitorSection[2];
-  return title.match(/第[一二三四五六七八九十\d]+标段/)?.[0] || "监理标段";
+  const monitorSection = source.match(/(第?[一二三四五六七八九十\d]+\s*标段)[^。；\n]{0,45}监理|监理[^。；\n]{0,45}(第?[一二三四五六七八九十\d]+\s*标段)/);
+  if (monitorSection) return (monitorSection[1] || monitorSection[2]).replace(/\s+/g, "");
+  return title.match(/第?[一二三四五六七八九十\d]+\s*标段/)?.[0].replace(/\s+/g, "") || "监理标段";
 }
 
 function categoryEvidence(title, text) {
