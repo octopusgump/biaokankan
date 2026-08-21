@@ -155,6 +155,21 @@ test("uses one complete label set for confirmed and document-required deadlines"
   }
 });
 
+test("explicit document-required deadlines override every nearby date", () => {
+  const cases = [
+    "投标文件递交截止时间：详见招标文件（不早于2026年8月24日09时00分）。",
+    "投标截止时间详见招标文件，招标文件发售至2026年8月10日。",
+  ];
+
+  for (const sentence of cases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, null, sentence);
+    assert.equal(project.bidDeadlineStatus, "document_required", sentence);
+    assert.match(project.bidDeadlineEvidence, /见招标文件/, sentence);
+    assert.equal(project.pendingFields.includes("投标截止时间"), true, sentence);
+  }
+});
+
 test("does not treat a later document-download date as the bid deadline", () => {
   const project = extractProject({
     title: "[监理]截止时间邻近性测试工程",

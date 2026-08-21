@@ -217,6 +217,20 @@ function collectLabeledDates(text, labels) {
 }
 
 export function extractTimeFields(text, publishedAt) {
+  let documentRequiredEvidence = null;
+  for (const label of DEADLINE_LABELS) {
+    let index = text.indexOf(label);
+    while (index >= 0) {
+      const evidence = evidenceNear(text, index);
+      if (/(?:详?见|以)[^。；;]{0,40}招标文件/.test(evidence)) {
+        documentRequiredEvidence = evidence;
+        break;
+      }
+      index = text.indexOf(label, index + label.length);
+    }
+    if (documentRequiredEvidence) break;
+  }
+
   const candidates = collectLabeledDates(text, DEADLINE_LABELS);
   const sectionTimePattern = /投标文件的递交\s+(?:\d+(?:\.\d+)?[、.]?\s*)?时间\s*[：:]/g;
   for (const match of text.matchAll(sectionTimePattern)) {
@@ -239,20 +253,6 @@ export function extractTimeFields(text, publishedAt) {
   const confirmed = candidates
     .filter((candidate) => !publishedDate || candidate.date.slice(0, 10) >= publishedDate)
     .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
-
-  let documentRequiredEvidence = null;
-  for (const label of DEADLINE_LABELS) {
-    let index = text.indexOf(label);
-    while (index >= 0) {
-      const evidence = evidenceNear(text, index);
-      if (/(?:详?见|以)[^。；;]{0,40}招标文件/.test(evidence)) {
-        documentRequiredEvidence = evidence;
-        break;
-      }
-      index = text.indexOf(label, index + label.length);
-    }
-    if (documentRequiredEvidence) break;
-  }
 
   const acquireLabels = [
     "招标文件的获取时间",
@@ -283,9 +283,9 @@ export function extractTimeFields(text, publishedAt) {
   }
 
   return {
-    bidDeadline: confirmed?.date || null,
-    bidDeadlineStatus: confirmed ? "confirmed" : documentRequiredEvidence ? "document_required" : "pending",
-    bidDeadlineEvidence: confirmed?.evidence || documentRequiredEvidence,
+    bidDeadline: documentRequiredEvidence ? null : confirmed?.date || null,
+    bidDeadlineStatus: documentRequiredEvidence ? "document_required" : confirmed ? "confirmed" : "pending",
+    bidDeadlineEvidence: documentRequiredEvidence || confirmed?.evidence || null,
     documentAcquireStart,
     documentAcquireDeadline,
   };
