@@ -333,12 +333,30 @@ function extractSection(title, text) {
   return title.match(/第[一二三四五六七八九十\d]+标段/)?.[0] || "监理标段";
 }
 
-function inferCategory(text) {
-  if (/水利|河道|水库|灌区|水土保持/.test(text)) return "水利工程监理";
-  if (/道路|排水|污水|管网|桥梁|市政/.test(text)) return "市政工程监理";
-  if (/公路|高速|交通/.test(text)) return "交通工程监理";
-  if (/厂房|住宅|宿舍|建筑|楼|园区/.test(text)) return "房屋建筑监理";
-  return "工程监理";
+function categoryEvidence(title, text) {
+  const marker = text.search(/项目概况(?:与招标范围)?\s*[：:]?/);
+  if (marker < 0) return title;
+  const overview = text.slice(marker, marker + 1200);
+  const markerLength = overview.match(/^项目概况(?:与招标范围)?\s*[：:]?/)?.[0].length || 0;
+  const following = overview.slice(markerLength);
+  const boundary = following.search(/\n\s*(?:(?:\d+(?:\.\d+)*|[一二三四五六七八九十]+)\s*[、.]?\s*)?(?:招标范围|投标人资格|招标文件|投标截止|开标|联系方式|环境保护)/);
+  const section = boundary >= 0 ? overview.slice(0, markerLength + boundary) : overview;
+  return `${title} ${section}`;
+}
+
+function inferCategory(title, text) {
+  const evidence = categoryEvidence(title, text);
+  const categories = [
+    ["水利工程监理", ["水利", "河道", "水库", "灌区", "水土保持"]],
+    ["市政工程监理", ["道路", "排水", "污水", "管网", "桥梁", "市政"]],
+    ["交通工程监理", ["公路", "高速", "交通"]],
+    ["房屋建筑监理", ["厂房", "住宅", "宿舍", "建筑", "楼", "园区"]],
+  ];
+  const scored = categories.map(([category, keywords]) => ({
+    category,
+    score: keywords.reduce((total, keyword) => total + evidence.split(keyword).length - 1, 0),
+  })).sort((a, b) => b.score - a.score);
+  return scored[0].score > 0 ? scored[0].category : "工程监理";
 }
 
 function excerpt(text) {
@@ -415,7 +433,8 @@ export function retainProjectWithLatestLinkState(project, source) {
 }
 
 export function extractProject({ title, html, text: providedText, url, publishedAt, source, originalAvailable = true, linkFailureReason = null }, now = new Date()) {
-  const text = flattenText(html || providedText);
+  const decodedText = decodeHtml(html || providedText);
+  const text = decodedText.replace(/\s+/g, " ").trim();
   if (!isSupervisionText(`${title} ${text}`)) return null;
   const timeFields = extractTimeFields(text, normalizePublishedAt(publishedAt));
   const presentation = deadlinePresentation(timeFields.bidDeadline, now, timeFields.bidDeadlineStatus);
@@ -428,7 +447,7 @@ export function extractProject({ title, html, text: providedText, url, published
     id: hashNumber(url),
     name: cleanProjectName(title, text),
     section: extractSection(title, text),
-    category: inferCategory(`${title} ${text}`),
+    category: inferCategory(title, decodedText),
     investment: extractInvestment(text),
     ...timeFields,
     bidDeadlineVerifiedAt: timeFields.bidDeadlineStatus === "confirmed" ? formatChinaTime(now).slice(0, 16) : null,

@@ -134,6 +134,25 @@ test("prefers the original announcement body over its list summary", () => {
   assert.equal(project.pendingFields?.includes("投标截止时间"), false);
 });
 
+test("scores category evidence only from the title and project overview", () => {
+  const title = "渑池至淅川高速公路洛宁至嵩县段施工监理及试验检测招标公告";
+  const project = extractProject({
+    title,
+    html: `
+      <h2>${title}</h2>
+      <p>项目概况：本项目为高速公路交通工程，包含公路路基、互通及服务区施工监理。</p>
+      <p>投标截止时间：2026年8月24日09时30分。</p>
+      <h3>环境保护通用要求</h3>
+      <p>施工须执行水土保持、河道保护、水库周边管理要求。</p>
+    `,
+    url: "https://example.test/highway-category",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.category, "交通工程监理");
+});
+
 test("normalizes fragmented dates and common deadline label variants", () => {
   const cases = [
     ["投标文件递交的截止时间（投标截止时间，下同）为 20 26 年 9 月 9 日上午 09 时 00 分。", "2026-09-09 09:00"],
