@@ -1,0 +1,138 @@
+.preview-lock-shell {
+  min-height: 100vh;
+  padding: 48px 20px;
+  display: grid;
+  place-items: center;
+  background: var(--parchment);
+}
+
+.preview-lock-card {
+  width: min(100%, 430px);
+  padding: 36px;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--canvas);
+  box-shadow: 0 24px 60px rgba(45, 72, 102, .12);
+}
+
+.preview-lock-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.preview-lock-brand > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.preview-lock-brand strong,
+.preview-lock-brand small {
+  display: block;
+}
+
+.preview-lock-brand strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.preview-lock-brand small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.preview-lock-kicker {
+  margin: 42px 0 10px;
+  color: var(--action);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.preview-lock-card h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 30px;
+  line-height: 1.2;
+  letter-spacing: -.035em;
+}
+
+.preview-lock-copy {
+  margin: 13px 0 28px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.preview-lock-card form {
+  display: grid;
+  gap: 10px;
+}
+
+.preview-lock-card label {
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.preview-lock-card input {
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.preview-lock-card form > button,
+.preview-lock-retry {
+  min-height: 48px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--action);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.preview-lock-card button:disabled {
+  cursor: wait;
+  opacity: .58;
+}
+
+.preview-lock-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.preview-lock-progress {
+  min-height: 48px;
+  padding: 13px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.preview-lock-note {
+  display: block;
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+@media (max-width: 640px) {
+  .preview-lock-shell { padding: 18px; }
+  .preview-lock-card { padding: 28px 24px; }
+  .preview-lock-kicker { margin-top: 34px; }
+  .preview-lock-card h1 { font-size: 27px; }
+}

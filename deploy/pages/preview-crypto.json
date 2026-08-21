@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "keyVersion": "preview-f428655f945b9feb",
+  "pbkdf2": {
+    "hash": "SHA-256",
+    "iterations": 600000,
+    "salt": "bbcLeAIAHysqMxsR8BngAw=="
+  },
+  "cipher": {
+    "name": "AES-GCM",
+    "keyLength": 256,
+    "ivLength": 12
+  }
+}

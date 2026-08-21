@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { decryptPreviewJson, derivePreviewKey } from "../shared/pages-preview-crypto.mjs";
 
 const outputRoot = new URL("../pages-dist/", import.meta.url);
 
@@ -27,10 +28,18 @@ test("the static entry dispatches deep links to the correct screen", async () =>
   assert.match(entry, /pathname === "\/radar\/admin"/);
   assert.match(entry, /pathname === "\/radar\/project"/);
   assert.match(entry, /detailFromQuery/);
+  assert.match(entry, /<PreviewAccess>/);
+  assert.match(entry, /initialSnapshot/);
+  assert.match(await readFile(new URL("../vite.pages.config.ts", import.meta.url), "utf8"), /BIAOKANKAN_PAGES_ENCRYPTED": "true"/);
+  assert.match(await readFile(new URL("../vite.china.config.ts", import.meta.url), "utf8"), /BIAOKANKAN_PAGES_ENCRYPTED": "false"/);
 });
 
 test("the published snapshot keeps bid deadlines separate from document acquisition windows", async () => {
-  const snapshot = JSON.parse(await readFile(new URL("data/radar.json", outputRoot), "utf8"));
+  const password = process.env.BIAOKANKAN_PREVIEW_PASSWORD;
+  assert.ok(password, "encrypted Pages tests require BIAOKANKAN_PREVIEW_PASSWORD");
+  const envelope = JSON.parse(await readFile(new URL("data/radar.enc.json", outputRoot), "utf8"));
+  const key = await derivePreviewKey(password, envelope, ["decrypt"]);
+  const snapshot = await decryptPreviewJson(envelope, key);
   const samples = [
     ["西平县乡村振兴肉牛产业融合发展建设项目", "2026-06-16 08:00", "2026-06-23 18:00"],
     ["正阳县慎南路", "2026-05-14 08:00", "2026-05-20 18:00"],
