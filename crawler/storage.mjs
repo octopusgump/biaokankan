@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizeProjectTimeFields } from "../shared/project-time.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const defaultSnapshotPath = path.join(projectRoot, "public", "data", "radar.json");
@@ -58,11 +59,11 @@ function validateSnapshot(value) {
   if (!value || typeof value !== "object") throw new Error("雷达快照必须是对象");
   if (!Array.isArray(value.projects) || !Array.isArray(value.sources)) throw new Error("雷达快照缺少 projects 或 sources 数组");
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     mode: "live",
     generatedAt: value.generatedAt || null,
     storage: value.storage || { driver: "json", contractVersion: 1 },
-    projects: value.projects,
+    projects: value.projects.map((project) => normalizeProjectTimeFields(project)),
     sources: value.sources,
     run: value.run || null,
     summary: value.summary || null,

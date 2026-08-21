@@ -2,8 +2,10 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { PublicFooter, PublicIntro } from "./public-intro";
+import { documentAcquirePresentation, formatDocumentAcquireWindow, normalizeProjectTimeFields } from "../shared/project-time.mjs";
 
 type DeadlineState = "normal" | "warning" | "danger" | "expired" | "pending";
+type BidDeadlineStatus = "confirmed" | "document_required" | "pending";
 type DataState = "loading" | "ready" | "never" | "unavailable";
 type DetailState = "inactive" | "loading" | "ready" | "missing" | "never" | "unavailable";
 type MainView = "radar" | "admin";
@@ -13,6 +15,8 @@ type SortMode = "deadline" | "discovered" | "published" | "updated" | "investmen
 type Project = {
   id: number; name: string; section: string; category: string; investment: string;
   deadline: string | null; deadlineShort: string; remaining: string; deadlineState: DeadlineState;
+  bidDeadline: string | null; bidDeadlineStatus: BidDeadlineStatus; bidDeadlineEvidence: string | null;
+  bidDeadlineVerifiedAt: string | null; documentAcquireStart: string | null; documentAcquireDeadline: string | null;
   client: string; clientExtra?: string; agency: string; source: string; sourceType: string;
   url: string; originalUrl?: string; listUrl?: string; homeUrl?: string;
   linkStatus?: "available" | "original_unavailable" | "source_unavailable";
@@ -75,7 +79,9 @@ function compareProjects(a: Project, b: Project, mode: SortMode) {
     if (!Number.isFinite(right)) return -1;
     return right - left;
   }
-  const now = Date.now(); const left = timeValue(a.deadline); const right = timeValue(b.deadline);
+  const now = Date.now();
+  const left = timeValue(a.bidDeadlineStatus === "confirmed" ? a.bidDeadline : null);
+  const right = timeValue(b.bidDeadlineStatus === "confirmed" ? b.bidDeadline : null);
   const group = (value: number) => !Number.isFinite(value) ? 2 : value < now ? 1 : 0;
   const leftGroup = group(left); const rightGroup = group(right);
   if (leftGroup !== rightGroup) return leftGroup - rightGroup;
@@ -83,8 +89,18 @@ function compareProjects(a: Project, b: Project, mode: SortMode) {
   return leftGroup === 0 ? left - right : right - left;
 }
 
-function Deadline({ project }: { project: Project }) {
-  return <div className={`deadline-block ${project.deadlineState}`}><i className="deadline-dot" /><span className="deadline-copy"><strong>{project.deadlineShort}</strong><small>{project.remaining}</small></span></div>;
+function BidDeadline({ project }: { project: Project }) {
+  return <div className={`deadline-block ${project.deadlineState}`}><i className="deadline-dot" /><span className="deadline-copy"><b className="time-kind">投标截止</b><strong>{project.deadlineShort}</strong><small>{project.remaining}</small></span></div>;
+}
+
+function DocumentAcquire({ project }: { project: Project }) {
+  const presentation = documentAcquirePresentation(project.documentAcquireStart, project.documentAcquireDeadline);
+  if (!presentation) return null;
+  return <div className={`document-acquire ${presentation.status}`}><i /><span><b className="time-kind">文件获取</b><strong>{presentation.short}</strong><small>{presentation.label}</small></span></div>;
+}
+
+function ProjectTimes({ project }: { project: Project }) {
+  return <div className="project-time-stack"><BidDeadline project={project} /><DocumentAcquire project={project} /></div>;
 }
 
 function UpdateIndicator() { return <em className="update-indicator"><i />公告有更新</em>; }
@@ -228,7 +244,7 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false }: { i
   useEffect(() => { let cancelled = false; (async () => { setDataState("loading"); try {
     const response = await fetch(appHref("/data/radar.json"), { cache: "no-store" }); if (!response.ok) throw new Error();
     const snapshot = await response.json() as RadarSnapshot; if (snapshot.mode !== "live" || !Array.isArray(snapshot.projects) || !Array.isArray(snapshot.sources)) throw new Error();
-    if (cancelled) return; setProjects(snapshot.projects); setSources(snapshot.sources); setRun(snapshot.run); setSummary(snapshot.summary); setErrors(snapshot.errors || []); setGeneratedAt(snapshot.generatedAt); setDataState(snapshot.run ? "ready" : "never");
+    if (cancelled) return; setProjects(snapshot.projects.map((project) => normalizeProjectTimeFields(project) as Project)); setSources(snapshot.sources); setRun(snapshot.run); setSummary(snapshot.summary); setErrors(snapshot.errors || []); setGeneratedAt(snapshot.generatedAt); setDataState(snapshot.run ? "ready" : "never");
   } catch { if (!cancelled) { setProjects([]); setSources([]); setRun(null); setSummary(null); setErrors([]); setGeneratedAt(null); setDataState("unavailable"); } } })(); return () => { cancelled = true; }; }, [reload, view]);
 
   useEffect(() => {
@@ -305,21 +321,38 @@ export default function LandingPage() {
 
 function ProjectRow({ project, onOpen, onOpenOriginal }: { project: Project; onOpen: () => void; onOpenOriginal: () => void }) {
   const linkLabel = project.linkStatus === "source_unavailable" ? "链接不可用" : project.linkStatus === "original_unavailable" ? "原公告不可用 · 查看上级入口" : "查看原公告 ↗";
-  return <div className="table-row data-row"><Deadline project={project} /><div className="project-name"><button onClick={onOpen}>{project.name}</button><span>{project.section} · {project.category}</span>{project.related && <UpdateIndicator />}</div><div className="cell"><strong>{project.investment.replace(" 万元", "")}</strong><span>{project.investment.includes("万元") ? "万元" : "需人工确认"}</span></div><div className="cell"><strong>{project.client}</strong><span>{project.clientExtra || project.region}</span></div><div className="cell"><strong>{project.agency}</strong><span>招标代理机构</span></div><div className="source-cell"><strong>{project.source}</strong><button className={project.linkStatus && project.linkStatus !== "available" ? "link-warning" : ""} onClick={onOpenOriginal}>{linkLabel}</button></div></div>;
+  return <div className="table-row data-row"><ProjectTimes project={project} /><div className="project-name"><button onClick={onOpen}>{project.name}</button><span>{project.section} · {project.category}</span>{project.related && <UpdateIndicator />}</div><div className="cell"><strong>{project.investment.replace(" 万元", "")}</strong><span>{project.investment.includes("万元") ? "万元" : "需人工确认"}</span></div><div className="cell"><strong>{project.client}</strong><span>{project.clientExtra || project.region}</span></div><div className="cell"><strong>{project.agency}</strong><span>招标代理机构</span></div><div className="source-cell"><strong>{project.source}</strong><button className={project.linkStatus && project.linkStatus !== "available" ? "link-warning" : ""} onClick={onOpenOriginal}>{linkLabel}</button></div></div>;
 }
 
 function MobileProject({ project, onOpen, onOpenOriginal }: { project: Project; onOpen: () => void; onOpenOriginal: () => void }) {
-  return <article className="mobile-project-card"><Deadline project={project} /><button className="mobile-project-title" onClick={onOpen}>{project.name}</button><p>{project.section} · {project.category}</p>{project.related && <UpdateIndicator />}<dl><div><dt>总投资</dt><dd>{project.investment}</dd></div><div><dt>招标人</dt><dd>{project.client}</dd></div><div><dt>代理机构</dt><dd>{project.agency}</dd></div><div><dt>信息来源</dt><dd>{project.source}</dd></div></dl><div className="mobile-actions"><button onClick={onOpen}>查看详情</button><button onClick={onOpenOriginal}>{project.linkStatus === "available" || !project.linkStatus ? "原公告 ↗" : "核验链接"}</button></div></article>;
+  return <article className="mobile-project-card"><ProjectTimes project={project} /><button className="mobile-project-title" onClick={onOpen}>{project.name}</button><p>{project.section} · {project.category}</p>{project.related && <UpdateIndicator />}<dl><div><dt>总投资</dt><dd>{project.investment}</dd></div><div><dt>招标人</dt><dd>{project.client}</dd></div><div><dt>代理机构</dt><dd>{project.agency}</dd></div><div><dt>信息来源</dt><dd>{project.source}</dd></div></dl><div className="mobile-actions"><button onClick={onOpen}>查看详情</button><button onClick={onOpenOriginal}>{project.linkStatus === "available" || !project.linkStatus ? "原公告 ↗" : "核验链接"}</button></div></article>;
 }
 
 function ProjectDetail({ project, onBack, onOpenOriginal }: { project: Project; onBack: () => void; onOpenOriginal: (project: Project) => void }) {
-  const fields = [["投标截止时间", project.deadline || "待核验"], ["标段", project.section], ["总投资", project.investment], ["招标人", project.clientExtra ? `${project.client}（${project.clientExtra}）` : project.client], ["招标代理机构", project.agency], ["项目地区", project.region], ["公告发布时间", project.publishedAt], ["信息来源", project.source]];
+  const bidDeadline = project.bidDeadlineStatus === "document_required"
+    ? "待核验（公告注明：见招标文件）"
+    : project.bidDeadlineStatus === "confirmed" && project.bidDeadline
+      ? project.bidDeadline
+      : "待核验";
+  const fields = [
+    ["投标截止时间", bidDeadline],
+    ["招标文件获取窗口", formatDocumentAcquireWindow(project.documentAcquireStart, project.documentAcquireDeadline)],
+    ["投标截止依据", project.bidDeadlineEvidence || "待核验"],
+    ...(project.bidDeadlineVerifiedAt ? [["投标截止核验时间", project.bidDeadlineVerifiedAt]] : []),
+    ["标段", project.section],
+    ["总投资", project.investment],
+    ["招标人", project.clientExtra ? `${project.client}（${project.clientExtra}）` : project.client],
+    ["招标代理机构", project.agency],
+    ["项目地区", project.region],
+    ["公告发布时间", project.publishedAt],
+    ["信息来源", project.source],
+  ];
   const linkLabel = project.linkStatus === "source_unavailable" ? "链接不可用" : project.linkStatus === "original_unavailable" ? "核验原公告入口" : "打开原公告";
-  return <><div className="breadcrumb"><button onClick={onBack}>项目雷达</button><span>/</span><span>项目详情</span></div><header className="detail-hero"><div className="detail-title"><div className="detail-tags"><span>{project.category}</span><span>{project.region.split(" · ").at(-1)}</span>{project.related && <UpdateIndicator />}</div><h1>{project.name}</h1><p>{project.section} · 原始公告发布时间 {project.publishedAt}</p></div><div className="detail-deadline"><small>投标截止时间</small><Deadline project={project} /></div></header>
-    {project.pendingFields?.length ? <div className="verify-alert"><strong>需要人工核验</strong><span>系统暂时无法可靠识别：{project.pendingFields.join("、")}。请以原公告为准。</span></div> : null}
+  return <><div className="breadcrumb"><button onClick={onBack}>项目雷达</button><span>/</span><span>项目详情</span></div><header className="detail-hero"><div className="detail-title"><div className="detail-tags"><span>{project.category}</span><span>{project.region.split(" · ").at(-1)}</span>{project.related && <UpdateIndicator />}</div><h1>{project.name}</h1><p>{project.section} · 原始公告发布时间 {project.publishedAt}</p></div><div className="detail-deadline"><small>时间安排</small><ProjectTimes project={project} /></div></header>
+    {project.bidDeadlineStatus === "document_required" ? <div className="verify-alert"><strong>投标截止时间需要核验</strong><span>公告注明投标截止时间见招标文件；文件获取窗口仅表示下载期限，不代表投标已经截止。</span></div> : project.pendingFields?.length ? <div className="verify-alert"><strong>需要人工核验</strong><span>系统暂时无法可靠识别：{project.pendingFields.join("、")}。请以原公告为准。</span></div> : null}
     {project.linkStatus && project.linkStatus !== "available" ? <div className="verify-alert"><strong>原公告无法访问</strong><span>{project.linkFailureReason || "最近一次扫描无法打开该链接"} · 最后核验 {project.lastVerifiedAt || "待核验"}</span></div> : null}
     {project.related && <div className="update-alert"><strong>该项目有最新{project.related.type}</strong><span>{project.related.title} · {project.related.date}</span></div>}
-    <div className="detail-layout"><div className="detail-main"><section className="detail-card"><div className="section-title"><span>01</span><h2>项目关键信息</h2></div><dl className="detail-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd className={value === "待核验" ? "pending-text" : ""}>{value}</dd></div>)}</dl></section><section className="detail-card"><div className="section-title"><span>02</span><h2>原公告摘要</h2></div><div className="original-title"><small>原始公告标题</small><strong>{project.originalTitle}</strong></div><p className="summary-text">{project.summary}</p><p className="summary-note">内容由系统从公开公告自动提取，仅用于快速浏览。请打开原公告核验完整招标范围、资格要求和时间安排。</p></section><section className="detail-card"><div className="section-title"><span>03</span><h2>关联公告</h2></div>{project.related ? <div className="related-item"><span>{project.related.type}</span><div><strong>{project.related.title}</strong><small>{project.related.date} · 已关联至本项目</small></div></div> : <div className="no-related">暂未发现补充、变更、暂停或终止公告</div>}</section></div><aside className="detail-side"><button className={`primary-link ${project.linkStatus === "source_unavailable" ? "disabled" : ""}`} onClick={() => onOpenOriginal(project)}>{linkLabel}<span>↗</span></button><div className="trace-card"><h3>信息追踪</h3><div><span>首次发现时间</span><strong>{project.discoveredAt}</strong></div><div><span>扫描时间</span><strong>{project.lastVerifiedAt || "待核验"}</strong></div><div><span>更新时间</span><strong>{project.updatedAt}</strong></div><div><span>链接状态</span><strong className={project.linkStatus === "available" || !project.linkStatus ? "success-text" : "pending-text"}>{project.linkStatus === "available" || !project.linkStatus ? "原公告可访问" : "需要人工核验"}</strong></div><small>记录编号：JL-{String(project.id)}</small></div></aside></div></>;
+    <div className="detail-layout"><div className="detail-main"><section className="detail-card"><div className="section-title"><span>01</span><h2>项目关键信息</h2></div><dl className="detail-grid">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd className={value.includes("待核验") ? "pending-text" : ""}>{value}</dd></div>)}</dl></section><section className="detail-card"><div className="section-title"><span>02</span><h2>原公告摘要</h2></div><div className="original-title"><small>原始公告标题</small><strong>{project.originalTitle}</strong></div><p className="summary-text">{project.summary}</p><p className="summary-note">内容由系统从公开公告自动提取，仅用于快速浏览。请打开原公告核验完整招标范围、资格要求和时间安排。</p></section><section className="detail-card"><div className="section-title"><span>03</span><h2>关联公告</h2></div>{project.related ? <div className="related-item"><span>{project.related.type}</span><div><strong>{project.related.title}</strong><small>{project.related.date} · 已关联至本项目</small></div></div> : <div className="no-related">暂未发现补充、变更、暂停或终止公告</div>}</section></div><aside className="detail-side"><button className={`primary-link ${project.linkStatus === "source_unavailable" ? "disabled" : ""}`} onClick={() => onOpenOriginal(project)}>{linkLabel}<span>↗</span></button><div className="trace-card"><h3>信息追踪</h3><div><span>首次发现时间</span><strong>{project.discoveredAt}</strong></div><div><span>扫描时间</span><strong>{project.lastVerifiedAt || "待核验"}</strong></div><div><span>更新时间</span><strong>{project.updatedAt}</strong></div><div><span>链接状态</span><strong className={project.linkStatus === "available" || !project.linkStatus ? "success-text" : "pending-text"}>{project.linkStatus === "available" || !project.linkStatus ? "原公告可访问" : "需要人工核验"}</strong></div><small>记录编号：JL-{String(project.id)}</small></div></aside></div></>;
 }
 
 function AdminCenter({ tab, setTab, sources, errors, run }: { tab: "sources" | "errors"; setTab: (tab: "sources" | "errors") => void; sources: Source[]; errors: ScanError[]; run: ScanRun | null }) {

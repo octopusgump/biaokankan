@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText, retainProjectWithLatestLinkState } from "../crawler/core.mjs";
+import { buildSummary } from "../crawler/summary.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
+import { documentAcquirePresentation, normalizeProjectTimeFields } from "../shared/project-time.mjs";
 
 const source = {
   name: "开封市公共资源交易中心",
@@ -72,6 +74,121 @@ test("prefers the original announcement body over its list summary", () => {
   assert.equal(project.pendingFields?.includes("投标截止时间"), false);
 });
 
+test("normalizes fragmented dates and common deadline label variants", () => {
+  const cases = [
+    ["投标文件递交的截止时间（投标截止时间，下同）为 20 26 年 9 月 9 日上午 09 时 00 分。", "2026-09-09 09:00"],
+    ["投标文件上传的截止时间（投标截止时间，下同）为2026年8月24日09时30分。", "2026-08-24 09:30"],
+    ["五、投标文件的递交 5.1 时间：2026 年 09 月 01 日上午 9 时 30 分。", "2026-09-01 09:30"],
+    ["投标文件的上传/递交截止时间（投标截止时间：202 6 年 07 月 28 日 9时00分）。", "2026-07-28 09:00"],
+    ["投标文件上传的截止时间为2026年8月1 1日9时00分。", "2026-08-11 09:00"],
+  ];
+
+  for (const [sentence, expected] of cases) {
+    const project = extractProject({
+      title: "[监理]日期格式测试工程",
+      html: `<h2>[监理]日期格式测试工程</h2><p>${sentence}</p>`,
+      url: `https://example.test/${encodeURIComponent(sentence)}`,
+      publishedAt: "2026-07-01",
+      source: {
+        name: "日期格式测试来源",
+        type: "公共资源交易中心",
+        region: "河南省",
+      },
+    }, new Date("2026-07-01T00:00:00+08:00"));
+
+    assert.ok(project);
+    assert.equal(project.deadline, expected, sentence);
+  }
+});
+
+test("does not treat a later document-download date as the bid deadline", () => {
+  const project = extractProject({
+    title: "[监理]截止时间邻近性测试工程",
+    html: `
+      <h2>[监理]截止时间邻近性测试工程</h2>
+      <p>查询信息的截止时间为投标截止时间。其他资格要求、证明材料及平台查询结果均应真实有效。</p>
+      <p>4.招标文件的获取：投标人于2026年7月31日至2026年8月7日在网上下载招标文件。</p>
+      <p>5.1 投标文件上传的截止时间（投标截止时间，下同）为2026年8月24日09时30分。</p>
+    `,
+    url: "https://example.test/deadline-proximity",
+    publishedAt: "2026-07-31",
+    source: {
+      name: "截止时间邻近性测试来源",
+      type: "公共资源交易中心",
+      region: "河南省",
+    },
+  }, new Date("2026-07-31T00:00:00+08:00"));
+
+  assert.ok(project);
+  assert.equal(project.deadline, "2026-08-24 09:30");
+  assert.equal(project.bidDeadline, "2026-08-24 09:30");
+  assert.equal(project.bidDeadlineStatus, "confirmed");
+  assert.equal(project.documentAcquireStart, "2026-07-31 00:00");
+  assert.equal(project.documentAcquireDeadline, "2026-08-07 00:00");
+});
+
+test("keeps the two reviewed document-acquisition windows separate from bid deadlines", () => {
+  const samples = [
+    {
+      name: "西平县乡村振兴肉牛产业融合发展建设项目",
+      url: "https://ggzy.zhumadian.gov.cn/TPFront/InfoDetail/?InfoID=23ea2508-bafc-47ec-a099-4f7c5154fc3b&CategoryNum=003001001002",
+      sentence: "招标文件获取：2026年06月16日8：00时至2026年06月23日18:00时。",
+      start: "2026-06-16 08:00",
+      end: "2026-06-23 18:00",
+    },
+    {
+      name: "正阳县慎南路（花都大道—正陡路）道路工程项目",
+      url: "https://ggzy.zhumadian.gov.cn/TPFront/InfoDetail/?InfoID=028d3f52-f512-4175-88a4-f74c10daa0f7&CategoryNum=003001001005",
+      sentence: "招标文件的获取时间：2026年5月14日8：00时至2026年5月20日18:00时。",
+      start: "2026-05-14 08:00",
+      end: "2026-05-20 18:00",
+    },
+  ];
+
+  for (const sample of samples) {
+    const project = extractProject({
+      title: `${sample.name}监理招标公告`,
+      html: `<h2>${sample.name}监理招标公告</h2><p>${sample.sentence}</p><p>投标截止时间及地点：详见招标文件。</p>`,
+      url: sample.url,
+      publishedAt: "2026-05-01",
+      source: {
+        name: "驻马店市公共资源交易中心",
+        type: "公共资源交易中心",
+        region: "河南省 · 驻马店市",
+      },
+    }, new Date("2026-08-21T00:00:00+08:00"));
+
+    assert.ok(project);
+    assert.equal(project.bidDeadline, null, sample.name);
+    assert.equal(project.deadline, null, sample.name);
+    assert.equal(project.bidDeadlineStatus, "document_required", sample.name);
+    assert.match(project.bidDeadlineEvidence, /见招标文件/, sample.name);
+    assert.equal(project.bidDeadlineVerifiedAt, null, sample.name);
+    assert.equal(project.documentAcquireStart, sample.start, sample.name);
+    assert.equal(project.documentAcquireDeadline, sample.end, sample.name);
+    assert.equal(project.deadlineState, "pending", sample.name);
+    assert.equal(project.remaining, "公告注明：见招标文件", sample.name);
+  }
+});
+
+test("uses opening time only when the announcement explicitly equates it with the bid deadline", () => {
+  const create = (sentence) => extractProject({
+    title: "开标时间语义测试监理项目",
+    html: `<h2>开标时间语义测试监理项目</h2><p>${sentence}</p>`,
+    url: `https://example.test/${encodeURIComponent(sentence)}`,
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  const openingOnly = create("开标时间：2026年8月25日09时30分。");
+  assert.equal(openingOnly.bidDeadline, null);
+  assert.equal(openingOnly.bidDeadlineStatus, "pending");
+
+  const explicitlyEqual = create("开标时间：2026年8月25日09时30分，与投标截止时间相同。");
+  assert.equal(explicitlyEqual.bidDeadline, "2026-08-25 09:30");
+  assert.equal(explicitlyEqual.bidDeadlineStatus, "confirmed");
+});
+
 test("uses the eighteen confirmed public-resource sources", () => {
   assert.deepEqual(SOURCE_DEFINITIONS.map((item) => item.name), [
     "河南省公共资源交易中心",
@@ -103,6 +220,45 @@ test("deadline thresholds match the product rules", () => {
   assert.equal(deadlinePresentation("2026-08-23 09:30", now).deadlineState, "warning");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now).deadlineState, "expired");
   assert.equal(deadlinePresentation(null, now).deadlineState, "pending");
+  assert.equal(deadlinePresentation("2026-08-19 09:30", now, "document_required").deadlineState, "pending");
+  assert.equal(deadlinePresentation("2026-08-19 09:30", now, "document_required").remaining, "公告注明：见招标文件");
+});
+
+test("historical deadline fields migrate without breaking existing projects", () => {
+  const migrated = normalizeProjectTimeFields({
+    deadline: "2026-08-25 09:30",
+    lastVerifiedAt: "2026-08-20 07:30",
+  }, new Date("2026-08-20T00:00:00+08:00"));
+  assert.equal(migrated.bidDeadline, "2026-08-25 09:30");
+  assert.equal(migrated.bidDeadlineStatus, "confirmed");
+  assert.equal(migrated.deadline, migrated.bidDeadline);
+  assert.match(migrated.bidDeadlineEvidence, /历史 deadline 字段兼容迁移/);
+  assert.equal(migrated.bidDeadlineVerifiedAt, "2026-08-20 07:30");
+});
+
+test("document acquisition status is independent from bid deadline state", () => {
+  assert.equal(documentAcquirePresentation("2026-08-22 08:00", "2026-08-25 18:00", new Date("2026-08-21T00:00:00+08:00")).label, "未开始");
+  assert.equal(documentAcquirePresentation("2026-08-20 08:00", "2026-08-25 18:00", new Date("2026-08-21T00:00:00+08:00")).label, "获取中");
+  assert.equal(documentAcquirePresentation("2026-08-10 08:00", "2026-08-20 18:00", new Date("2026-08-21T00:00:00+08:00")).label, "已结束");
+});
+
+test("daily summary only counts confirmed bid deadlines", () => {
+  const now = new Date("2026-08-20T09:30:00+08:00");
+  const projects = [
+    { id: 1, name: "已确认", section: "监理标段", bidDeadline: "2026-08-21 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-20 08:00" },
+    { id: 2, name: "见招标文件", section: "监理标段", bidDeadline: null, bidDeadlineStatus: "document_required", documentAcquireDeadline: "2026-08-21 09:30", discoveredAt: "2026-08-20 08:00" },
+    { id: 3, name: "未确认", section: "监理标段", bidDeadline: "2026-08-22 09:30", bidDeadlineStatus: "pending", documentAcquireDeadline: null, discoveredAt: "2026-08-20 08:00" },
+  ];
+  const summary = buildSummary(projects, {
+    date: "2026-08-20",
+    finishedAt: "2026-08-20 09:30",
+    sourceCount: 18,
+    succeededSources: 18,
+  }, now);
+
+  assert.equal(summary.expiringWithin3DaysCount, 1);
+  assert.deepEqual(summary.earliestProjects.map((project) => project.projectId), [1]);
+  assert.equal(summary.earliestProjects[0].bidDeadline, "2026-08-21 09:30");
 });
 
 test("retained projects never keep a stale available-link claim after a failed verification", () => {
@@ -145,6 +301,32 @@ test("published snapshot stays live, source-bound and link-unique", async () => 
   for (const project of snapshot.projects) {
     assert.equal(new URL(project.originalUrl).hostname.replace(/^www\./, ""), configured.get(project.source));
     assert.match(`${project.section} ${project.category}`, /监理/);
+    assert.ok(["confirmed", "document_required", "pending"].includes(project.bidDeadlineStatus));
+    assert.equal(project.deadline, project.bidDeadline);
+    assert.ok(Object.hasOwn(project, "bidDeadlineEvidence"));
+    assert.ok(Object.hasOwn(project, "bidDeadlineVerifiedAt"));
+    assert.ok(Object.hasOwn(project, "documentAcquireStart"));
+    assert.ok(Object.hasOwn(project, "documentAcquireDeadline"));
   }
   assert.equal(snapshot.summary.newProjectCount, snapshot.projects.filter((project) => project.createdToday).length);
+  for (const summaryProject of snapshot.summary.earliestProjects) {
+    const project = snapshot.projects.find((item) => item.id === summaryProject.projectId);
+    assert.equal(project?.bidDeadlineStatus, "confirmed");
+    assert.equal(summaryProject.deadline, project?.bidDeadline);
+  }
+
+  const reviewed = [
+    ["西平县乡村振兴肉牛产业融合发展建设项目", "2026-06-16 08:00", "2026-06-23 18:00"],
+    ["正阳县慎南路", "2026-05-14 08:00", "2026-05-20 18:00"],
+  ];
+  for (const [name, start, end] of reviewed) {
+    const project = snapshot.projects.find((item) => item.name.includes(name));
+    assert.ok(project, name);
+    assert.equal(project.bidDeadline, null);
+    assert.equal(project.bidDeadlineStatus, "document_required");
+    assert.match(project.bidDeadlineEvidence, /见招标文件/);
+    assert.equal(project.documentAcquireStart, start);
+    assert.equal(project.documentAcquireDeadline, end);
+    assert.equal(project.deadlineState, "pending");
+  }
 });
