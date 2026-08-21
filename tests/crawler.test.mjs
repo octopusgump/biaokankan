@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText } from "../crawler/core.mjs";
+import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText, retainProjectWithLatestLinkState } from "../crawler/core.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
 
 const source = {
@@ -42,16 +42,59 @@ test("extracts the PRD sample fields without guessing", () => {
   assert.equal(project.linkStatus, "available");
 });
 
-test("uses only the five confirmed public-resource sources", () => {
+test("prefers the original announcement body over its list summary", () => {
+  const title = "原阳县原兴路、文岩街、惠民街、新一路雨污水管网及新一路污水提升泵站新建工程1标段、2标段、3标段";
+  const listText = `[河南省·新乡市·新乡市] [公开招标] [监理] ${title} [正在报名]`;
+  const html = `
+    <!-- <p>项目名称：xx宁东能源化工基地管理委员会宁东基地土地评估机构比选入库采购项目</p> -->
+    <h2>[河南省·新乡市·新乡市] [公开招标] [监理] ${title}</h2>
+    <p>本项目招标人为：原阳县住房建设和城市管理局。</p>
+    <p>5.1、投标文件递交的截止及开标时间：2026年09月14日 9 时 00 分。</p>
+    <p>招标代理机构：河南众志鑫荣项目管理有限公司</p>
+  `;
+  const project = extractProject({
+    title,
+    html,
+    text: listText,
+    url: "https://ggzy.xinxiang.gov.cn/jyxx/089003/089003001/20260819/fcab3f7a-c142-4e7d-8897-02ffe0bdeac5.html",
+    publishedAt: "2026-08-19",
+    source: {
+      name: "新乡市公共资源交易中心",
+      type: "公共资源交易中心",
+      region: "河南省 · 新乡市",
+    },
+  }, new Date("2026-08-21T00:00:00+08:00"));
+
+  assert.ok(project);
+  assert.equal(project.deadline, "2026-09-14 09:00");
+  assert.equal(project.client, "原阳县住房建设和城市管理局");
+  assert.equal(project.agency, "河南众志鑫荣项目管理有限公司");
+  assert.equal(project.pendingFields?.includes("投标截止时间"), false);
+});
+
+test("uses the eighteen confirmed public-resource sources", () => {
   assert.deepEqual(SOURCE_DEFINITIONS.map((item) => item.name), [
-    "开封市公共资源交易中心",
-    "郑州市公共资源交易中心",
     "河南省公共资源交易中心",
-    "新乡市公共资源交易中心",
+    "郑州市公共资源交易中心",
+    "开封市公共资源交易中心",
     "洛阳市公共资源交易中心",
+    "平顶山市公共资源交易中心",
+    "安阳市公共资源交易中心",
+    "鹤壁市公共资源交易中心",
+    "新乡市公共资源交易中心",
+    "焦作市公共资源交易中心",
+    "许昌市公共资源交易中心",
+    "漯河市公共资源交易中心",
+    "三门峡市公共资源交易中心",
+    "南阳市公共资源交易中心",
+    "商丘市公共资源交易中心",
+    "信阳市公共资源交易中心",
+    "驻马店市公共资源交易中心",
+    "郑州航空港经济综合实验区公共资源交易中心",
+    "济源市公共资源交易中心",
   ]);
   assert.equal(SOURCE_DEFINITIONS.some((item) => /政府采购网|河南兴达/.test(item.name)), false);
-  assert.equal(new Set(SOURCE_DEFINITIONS.map((item) => item.entry)).size, 5);
+  assert.equal(new Set(SOURCE_DEFINITIONS.map((item) => item.entry)).size, 18);
 });
 
 test("deadline thresholds match the product rules", () => {
@@ -60,6 +103,26 @@ test("deadline thresholds match the product rules", () => {
   assert.equal(deadlinePresentation("2026-08-23 09:30", now).deadlineState, "warning");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now).deadlineState, "expired");
   assert.equal(deadlinePresentation(null, now).deadlineState, "pending");
+});
+
+test("retained projects never keep a stale available-link claim after a failed verification", () => {
+  const project = {
+    originalUrl: "https://example.test/project/1",
+    linkStatus: "available",
+    lastVerifiedAt: "2026-08-19 07:30",
+  };
+  const retained = retainProjectWithLatestLinkState(project, {
+    result: "失败",
+    listAvailable: false,
+    homeAvailable: false,
+    lastVerifiedAt: "2026-08-20 07:30",
+    lastError: "公告列表返回 HTTP 503",
+  });
+
+  assert.equal(retained.originalUrl, project.originalUrl);
+  assert.equal(retained.linkStatus, "source_unavailable");
+  assert.equal(retained.lastVerifiedAt, "2026-08-20 07:30");
+  assert.equal(retained.linkFailureReason, "公告列表返回 HTTP 503");
 });
 
 test("only supervision opportunities pass the semantic gate", () => {
@@ -81,7 +144,7 @@ test("published snapshot stays live, source-bound and link-unique", async () => 
   assert.equal(snapshot.projects.some((project) => /政府采购网|河南兴达/.test(project.source)), false);
   for (const project of snapshot.projects) {
     assert.equal(new URL(project.originalUrl).hostname.replace(/^www\./, ""), configured.get(project.source));
-    assert.match(project.name, /监理|施工及监理|工程/);
+    assert.match(`${project.section} ${project.category}`, /监理/);
   }
   assert.equal(snapshot.summary.newProjectCount, snapshot.projects.filter((project) => project.createdToday).length);
 });

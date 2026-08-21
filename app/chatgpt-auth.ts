@@ -48,6 +48,19 @@ export async function requireChatGPTUser(
   redirect(chatGPTSignInPath(returnTo));
 }
 
+export function isTenderAdmin(user: ChatGPTUser): boolean {
+  const configured = process.env.TENDER_ADMIN_EMAILS?.split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean) || [];
+  return configured.length === 0 || configured.includes(user.email.toLowerCase());
+}
+
+export async function requireTenderAdmin(returnTo: string): Promise<ChatGPTUser> {
+  const user = await requireChatGPTUser(returnTo);
+  if (!isTenderAdmin(user)) redirect("/radar");
+  return user;
+}
+
 export function chatGPTSignInPath(returnTo: string): string {
   const safeReturnTo = safeRelativeReturnPath(returnTo);
   return `${SIGN_IN_PATH}?return_to=${encodeURIComponent(safeReturnTo)}`;

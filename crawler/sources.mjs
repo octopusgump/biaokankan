@@ -15,14 +15,14 @@ const REQUEST_DELAY_MS = Number(process.env.TENDER_CRAWLER_DELAY_MS || 250);
 
 export const SOURCE_DEFINITIONS = [
   {
-    id: 1,
-    key: "kaifeng",
-    name: "开封市公共资源交易中心",
-    entry: "https://www.kfsggzyjyw.cn/",
-    listEntry: "https://www.kfsggzyjyw.cn/jzbgg/index.jhtml",
-    region: "河南省 · 开封市",
+    id: 3,
+    key: "henan-public",
+    name: "河南省公共资源交易中心",
+    entry: "https://hnsggzyjy.henan.gov.cn/",
+    listEntry: "https://hnsggzyjy.henan.gov.cn/jyxx/002001/transaction_notice.html",
+    region: "河南省",
     type: "公共资源交易中心",
-    adapter: "kaifeng-html",
+    adapter: "henan-public-api",
   },
   {
     id: 2,
@@ -37,25 +37,14 @@ export const SOURCE_DEFINITIONS = [
     cnum: "012",
   },
   {
-    id: 3,
-    key: "henan-public",
-    name: "河南省公共资源交易中心",
-    entry: "https://hnsggzyjy.henan.gov.cn/",
-    listEntry: "https://hnsggzyjy.henan.gov.cn/jyxx/002001/transaction_notice.html",
-    region: "河南省",
+    id: 1,
+    key: "kaifeng",
+    name: "开封市公共资源交易中心",
+    entry: "https://www.kfsggzyjyw.cn/",
+    listEntry: "https://www.kfsggzyjyw.cn/jzbgg/index.jhtml",
+    region: "河南省 · 开封市",
     type: "公共资源交易中心",
-    adapter: "henan-public-api",
-  },
-  {
-    id: 4,
-    key: "xinxiang",
-    name: "新乡市公共资源交易中心",
-    entry: "https://ggzy.xinxiang.gov.cn/",
-    listEntry: "https://ggzy.xinxiang.gov.cn/jyxx/trade.html",
-    scanEntry: "https://ggzy.xinxiang.gov.cn/",
-    region: "河南省 · 新乡市",
-    type: "公共资源交易中心",
-    adapter: "xinxiang-html",
+    adapter: "kaifeng-html",
   },
   {
     id: 6,
@@ -69,6 +58,170 @@ export const SOURCE_DEFINITIONS = [
     category: "003001002",
     cnum: "001",
   },
+  {
+    id: 5,
+    key: "pingdingshan",
+    name: "平顶山市公共资源交易中心",
+    entry: "http://ggzy.pds.gov.cn/",
+    listEntry: "http://ggzy.pds.gov.cn/gjsgc/index.jhtml",
+    region: "河南省 · 平顶山市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/jszbpdss\/\d+\.jhtml$/i,
+  },
+  {
+    id: 9,
+    key: "anyang",
+    name: "安阳市公共资源交易中心",
+    entry: "https://ggzy.anyang.gov.cn/",
+    listEntry: "https://ggzy.anyang.gov.cn/ayggzy/jyxx/001001/001001002/tradelist.html",
+    scanEntry: "https://ggzy.anyang.gov.cn/",
+    region: "河南省 · 安阳市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/ayggzy\/jyxx\/001001\/001001002\/20\d{6}\//i,
+  },
+  {
+    id: 10,
+    key: "hebi",
+    name: "鹤壁市公共资源交易中心",
+    entry: "https://ggzy.hebi.gov.cn/",
+    listEntry: "https://ggzy.hebi.gov.cn/jyxx/006001/006001001/transaction_infos.html?cnum=006001001",
+    scanEntry: "https://ggzy.hebi.gov.cn/",
+    region: "河南省 · 鹤壁市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/engineering\.html\?.*categorynum=006001001/i,
+    transport: "system-curl",
+  },
+  {
+    id: 4,
+    key: "xinxiang",
+    name: "新乡市公共资源交易中心",
+    entry: "https://ggzy.xinxiang.gov.cn/",
+    listEntry: "https://ggzy.xinxiang.gov.cn/jyxx/trade.html",
+    scanEntry: "https://ggzy.xinxiang.gov.cn/",
+    region: "河南省 · 新乡市",
+    type: "公共资源交易中心",
+    adapter: "xinxiang-html",
+  },
+  {
+    id: 11,
+    key: "jiaozuo",
+    name: "焦作市公共资源交易中心",
+    entry: "https://ggzy.jiaozuo.gov.cn/",
+    listEntry: "https://ggzy.jiaozuo.gov.cn/jyxx/006001/006001001/project.html",
+    scanEntry: "https://ggzy.jiaozuo.gov.cn/",
+    region: "河南省 · 焦作市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/jyxx\/006001\/006001001\/20\d{6}\//i,
+  },
+  {
+    id: 12,
+    key: "xuchang",
+    name: "许昌市公共资源交易中心",
+    entry: "https://ggzy.xuchang.gov.cn/",
+    listEntry: "https://ggzy.xuchang.gov.cn/jyxx/jyxx.html",
+    scanEntry: "https://ggzy.xuchang.gov.cn/",
+    region: "河南省 · 许昌市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/jyxx\/002001\/002001002\/20\d{6}\//i,
+  },
+  {
+    id: 13,
+    key: "luohe",
+    name: "漯河市公共资源交易中心",
+    entry: "https://ggzy.luohe.gov.cn/",
+    listEntry: "https://ggzy.luohe.gov.cn/front/bidcontent/9005001001",
+    region: "河南省 · 漯河市",
+    type: "公共资源交易中心",
+    adapter: "luohe-api",
+  },
+  {
+    id: 14,
+    key: "sanmenxia",
+    name: "三门峡市公共资源交易中心",
+    entry: "http://gzjy.smx.gov.cn/",
+    listEntry: "http://gzjy.smx.gov.cn/jyxx/001001/moreinfojy.html",
+    scanEntry: "http://gzjy.smx.gov.cn/jyxx/001001/moreinfojy.html",
+    region: "河南省 · 三门峡市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/jyxx\/001001\/001001001\/20\d{6}\//i,
+    sourceNote: "截图中的旧域名 ggzy.smx.gov.cn 已失效，已改用当前官方域名 gzjy.smx.gov.cn",
+  },
+  {
+    id: 15,
+    key: "nanyang",
+    name: "南阳市公共资源交易中心",
+    entry: "https://ggzyjy.nanyang.gov.cn/",
+    listEntry: "https://ggzyjy.nanyang.gov.cn/jyxx/002001/002001002/transaction.html",
+    region: "河南省 · 南阳市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/jyxx\/002001\/002001002\/20\d{6}\//i,
+  },
+  {
+    id: 7,
+    key: "shangqiu",
+    name: "商丘市公共资源交易中心",
+    entry: "https://ggzyjy.shangqiu.gov.cn/",
+    listEntry: "https://ggzyjy.shangqiu.gov.cn/HNSQ/TradeCenter/tradeList.do?Deal_Type=Deal_Type1&Notice_Type=1",
+    region: "河南省 · 商丘市",
+    type: "公共资源交易中心",
+    adapter: "shangqiu-html",
+  },
+  {
+    id: 16,
+    key: "xinyang",
+    name: "信阳市公共资源交易中心",
+    entry: "https://ggzyjy.xinyang.gov.cn/",
+    listEntry: "https://ggzyjy.xinyang.gov.cn/jyxx/002001/002001001/moreinfo.html",
+    region: "河南省 · 信阳市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/jyxx\/002001\/002001001\/20\d{6}\//i,
+  },
+  {
+    id: 17,
+    key: "zhumadian",
+    name: "驻马店市公共资源交易中心",
+    entry: "https://ggzy.zhumadian.gov.cn/TPFront/",
+    listEntry: "https://ggzy.zhumadian.gov.cn/TPFront/jyxx/003001/003001001/",
+    region: "河南省 · 驻马店市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/TPFront\/InfoDetail\/\?.*CategoryNum=003001001/i,
+    transport: "system-curl",
+  },
+  {
+    id: 8,
+    key: "zhengzhou-airport",
+    name: "郑州航空港经济综合实验区公共资源交易中心",
+    entry: "http://www.zzhkgggzy.cn:18082/",
+    listEntry: "http://www.zzhkgggzy.cn:18082/jyxx/001001/transaction.html",
+    region: "河南省 · 郑州航空港区",
+    type: "公共资源交易中心",
+    adapter: "epoint-search",
+    category: "001001003",
+    cnum: "001",
+    wd: "监理",
+    fields: "title",
+    noParticiple: "0",
+  },
+  {
+    id: 18,
+    key: "jiyuan",
+    name: "济源市公共资源交易中心",
+    entry: "https://ggzyjy.jiyuan.gov.cn/",
+    listEntry: "https://ggzyjy.jiyuan.gov.cn/jyxx/008001/008001003/list2.html",
+    region: "河南省 · 济源市",
+    type: "公共资源交易中心",
+    adapter: "generic-html",
+    detailPattern: /\/jyxx\/008001\/008001003\/20\d{6}\//i,
+  },
 ];
 
 export async function scanSource(source, now = new Date()) {
@@ -77,6 +230,9 @@ export async function scanSource(source, now = new Date()) {
   else if (source.adapter === "kaifeng-html") result = await scanKaifeng(source, now);
   else if (source.adapter === "henan-public-api") result = await scanHenanPublic(source, now);
   else if (source.adapter === "xinxiang-html") result = await scanXinxiang(source, now);
+  else if (source.adapter === "shangqiu-html") result = await scanShangqiu(source, now);
+  else if (source.adapter === "generic-html") result = await scanGenericHtml(source, now);
+  else if (source.adapter === "luohe-api") result = await scanLuohe(source, now);
   else throw new Error(`${source.name} 没有可用适配器`);
 
   let listAvailable = true;
@@ -191,12 +347,103 @@ async function scanXinxiang(source, now) {
   return scanHtmlEntries(source, entries, now);
 }
 
+async function scanShangqiu(source, now) {
+  const endpoint = new URL("/HNSQ/TradeCenter/ColTableInfo.do?", source.entry).toString();
+  const html = await fetchText(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+      referer: source.listEntry,
+      "x-requested-with": "XMLHttpRequest",
+    },
+    body: new URLSearchParams({
+      projectName: "监理",
+      date: "1month",
+      begin_time: "",
+      end_time: "",
+      begin_time2: "",
+      end_time2: "",
+      begin_price: "",
+      end_price: "",
+      dealType: "Deal_Type1",
+      noticType: "1",
+      area: "",
+      huanJie: "NOTICE",
+      pageIndex: "1",
+    }).toString(),
+  });
+  let entries = dedupeBy(
+    extractAnchors(html, source.entry)
+      .filter((item) => isSupervisionText(item.title || item.text || ""))
+      .filter((item) => !/(?:招标计划|中标|结果|候选人|合同|终止|废标)/.test(item.title || ""))
+      .map(withPublishedDate)
+      .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now)),
+    (item) => item.url,
+  );
+  if (!entries.length) {
+    const fallbackHtml = await fetchText(new URL("/HNSQ/Home/noticeInfo_FJSZ.do", source.entry), {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        referer: source.listEntry,
+        "x-requested-with": "XMLHttpRequest",
+      },
+      body: new URLSearchParams({ ggmc: "监理" }).toString(),
+    });
+    entries = dedupeBy(
+      extractAnchors(fallbackHtml, source.entry)
+        .filter((item) => /\/HNSQ\/ContentController\/content\.do/i.test(new URL(item.url).pathname))
+        .filter((item) => /(?:huanjie=NOTICE|noticeType=1)(?:&|$)/i.test(new URL(item.url).search.slice(1)))
+        .filter((item) => !/(?:中标|结果|候选人|暂停|延期|终止|废标|变更)/.test(item.title || ""))
+        .map(withPublishedDate)
+        .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now)),
+      (item) => item.url,
+    );
+  }
+  return scanHtmlEntries(source, entries, now);
+}
+
+async function scanGenericHtml(source, now) {
+  const scanEntry = source.scanEntry || source.listEntry;
+  const html = await fetchSourceText(source, scanEntry);
+  const entries = dedupeBy(
+    extractAnchors(html, scanEntry)
+      .filter((item) => source.detailPattern.test(item.url))
+      .filter((item) => isSupervisionText(`${item.title} ${item.text}`))
+      .filter((item) => !/(?:招标计划|中标|结果|候选人|合同|终止|废标|文件公示|预公示|变更)/.test(item.title || item.text || ""))
+      .map(withPublishedDate)
+      .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now)),
+    (item) => item.url,
+  );
+  return scanHtmlEntries(source, entries, now);
+}
+
+async function scanLuohe(source, now) {
+  const payload = await fetchJson(source.listEntry, {
+    filter: { luoheTradeProjectType: "" },
+    page: 1,
+    rows: 100,
+  }, source.entry);
+  if (!Array.isArray(payload?.rows)) throw new Error(`${source.name} 列表接口缺少 rows`);
+  const entries = payload.rows
+    .filter((record) => isSupervisionText(record.title || ""))
+    .filter((record) => !/(?:招标计划|中标|结果|候选人|合同|终止|废标|文件公示|预公示|变更)/.test(record.title || ""))
+    .map((record) => ({
+      url: new URL(`/front/bidcontent/${record.fullCategoryCode || "9005001001"}/${record.id}`, source.entry).toString(),
+      title: String(record.title || "").trim(),
+      publishedAt: record.publishTime || record.createTime || "",
+      text: "",
+    }))
+    .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now));
+  return scanHtmlEntries(source, dedupeBy(entries, (item) => item.url), now);
+}
+
 async function scanHtmlEntries(source, entries, now) {
   const projects = [];
   const issues = [];
   for (const entry of entries) {
     try {
-      const html = await fetchText(entry.fetchUrl || entry.url, { headers: { referer: source.listEntry } });
+      const html = await fetchSourceText(source, entry.fetchUrl || entry.url, { headers: { referer: source.listEntry } });
       const project = extractProject({ ...entry, html, source }, now);
       if (project) projects.push(project);
     } catch (error) {
@@ -211,6 +458,36 @@ async function scanHtmlEntries(source, entries, now) {
   return { source, read: entries.length, projects: dedupeBy(projects, (project) => project.url), issues };
 }
 
+async function fetchSourceText(source, url, options = {}) {
+  if (source.transport !== "system-curl") return fetchText(url, options);
+  const moduleName = `node:${"child_process"}`;
+  const { execFile } = await import(moduleName);
+  const args = [
+    "--fail",
+    "--silent",
+    "--show-error",
+    "--location",
+    "--compressed",
+    "--max-time",
+    String(Math.ceil(Number(process.env.TENDER_CRAWLER_TIMEOUT_MS || 25_000) / 1000)),
+    "--user-agent",
+    "Mozilla/5.0 TenderRadar/0.1 (+public tender monitoring)",
+  ];
+  const referer = options.headers?.referer;
+  if (referer) args.push("--referer", referer);
+  args.push(url);
+  return new Promise((resolve, reject) => {
+    execFile("curl", args, { encoding: "buffer", maxBuffer: 20 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        const detail = Buffer.isBuffer(stderr) ? stderr.toString("utf8").trim() : String(stderr || error.message).trim();
+        reject(new Error(`${url} 抓取失败：${detail || error.message}`));
+        return;
+      }
+      resolve(new TextDecoder("utf-8").decode(stdout));
+    });
+  });
+}
+
 async function scanEpointSource(source, now) {
   const endpoint = new URL("/inteligentsearch/rest/esinteligentsearch/getFullTextDataNew", source.entry).toString();
   const body = {
@@ -220,10 +497,10 @@ async function scanEpointSource(source, now) {
     rn: 30,
     sdt: "",
     edt: "",
-    wd: source.key === "zhengzhou" ? "%20" : "",
+    wd: source.wd ?? (source.key === "zhengzhou" ? "%20" : ""),
     inc_wd: "",
     exc_wd: "",
-    fields: source.key === "zhengzhou" ? "title" : "",
+    fields: source.fields ?? (source.key === "zhengzhou" ? "title" : ""),
     cnum: source.cnum,
     sort: source.key === "zhengzhou" ? '{"webdate":"0"}' : '{"webdate":"0","id":"0"}',
     ssort: source.key === "zhengzhou" ? "title" : "",
@@ -239,7 +516,7 @@ async function scanEpointSource(source, now) {
     statistics: null,
     unionCondition: null,
     accuracy: "",
-    noParticiple: "1",
+    noParticiple: source.noParticiple || "1",
     searchRange: source.key === "zhengzhou" ? [] : null,
     isBusiness: "1",
     noWd: source.key === "luoyang" ? true : undefined,
@@ -290,6 +567,8 @@ async function scanEpointSource(source, now) {
 }
 
 function withPublishedDate(item) {
-  const date = item.text.match(/20\d{2}-\d{1,2}-\d{1,2}/)?.[0] || "";
+  const pathDate = new URL(item.url).pathname.match(/\/(20\d{2})(\d{2})(\d{2})\//);
+  const date = item.text.match(/20\d{2}-\d{1,2}-\d{1,2}/)?.[0]
+    || (pathDate ? `${pathDate[1]}-${pathDate[2]}-${pathDate[3]}` : "");
   return { ...item, publishedAt: date };
 }

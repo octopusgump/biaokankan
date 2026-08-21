@@ -1,4 +1,4 @@
-import { chinaDateKey, deadlinePresentation, formatChinaTime, projectFingerprint } from "./core.mjs";
+import { chinaDateKey, deadlinePresentation, formatChinaTime, projectFingerprint, retainProjectWithLatestLinkState } from "./core.mjs";
 import { scanSource, SOURCE_DEFINITIONS } from "./sources.mjs";
 import { createSnapshotStore } from "./storage.mjs";
 
@@ -82,6 +82,9 @@ settled.forEach((result, index) => {
     result: "失败",
     found: oldSource?.found || 0,
     read: 0,
+    listAvailable: false,
+    homeAvailable: false,
+    lastVerifiedAt: formatChinaTime(started).slice(0, 16),
     lastError: message,
   });
 });
@@ -111,7 +114,9 @@ const mergedFresh = freshProjects.map((project) => {
   };
 });
 
-const retainedFromFailedSources = previous.projects.filter((project) => configuredNames.has(project.source) && (!successfulNames.has(project.source) || partialNames.has(project.source)));
+const retainedFromFailedSources = previous.projects
+  .filter((project) => configuredNames.has(project.source) && (!successfulNames.has(project.source) || partialNames.has(project.source)))
+  .map((project) => retainProjectWithLatestLinkState(project, sources.find((source) => source.name === project.source)));
 const finished = new Date();
 const projects = [...mergedFresh, ...retainedFromFailedSources]
   .filter((project, index, all) => all.findIndex((item) => item.url === project.url) === index)

@@ -360,16 +360,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .select-option {
+  width: 100%;
   min-height: 38px;
   padding: 0 10px;
   display: grid;
   grid-template-columns: 18px 1fr;
   gap: 6px;
   align-items: center;
+  border: 0;
   border-radius: 9px;
+  background: transparent;
   color: var(--ink-soft);
+  font-family: inherit;
   font-size: 13px;
   line-height: 1.2;
+  text-align: left;
   cursor: default;
   user-select: none;
 }
@@ -594,6 +599,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-size: 14px;
 }
 .breadcrumb button { padding: 0; border: 0; background: transparent; color: var(--action); }
+.detail-route-state > section {
+  min-height: 460px;
+  padding: 72px 24px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: var(--canvas);
+  text-align: center;
+}
+.detail-route-state > section > span { color: var(--subtle); font-size: 42px; line-height: 1; }
+.detail-route-state h1 { margin: 8px 0 0; font-size: clamp(26px, 3vw, 38px); letter-spacing: -.025em; }
+.detail-route-state p { max-width: 520px; margin: 0; color: var(--muted); font-size: 15px; }
+.detail-route-state section > div { margin-top: 14px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.detail-route-state section button {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid var(--action);
+  border-radius: 999px;
+  background: var(--action);
+  color: #fff;
+}
+.detail-route-state section button.secondary { background: transparent; color: var(--action); }
 .detail-hero {
   padding: 64px clamp(24px, 5vw, 72px);
   display: flex;
@@ -897,12 +927,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-size: 12px;
 }
 .admin-heading > span { color: var(--subtle); font-size: 12px; }
-.source-table { min-width: 1080px; }
+.source-table { min-width: 900px; }
 .source-row {
   min-height: 72px;
   padding: 12px 28px;
   display: grid;
-  grid-template-columns: minmax(230px, 1.5fr) 105px 135px 130px 105px 55px 90px;
+  grid-template-columns: minmax(260px, 1.7fr) 110px 140px 140px 120px 65px;
   gap: 14px;
   align-items: center;
   border-top: 1px solid var(--divider);
@@ -941,6 +971,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-size: 11px;
 }
 .source-actions button:hover, .source-card-actions button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.source-actions button:disabled, .source-card-actions button:disabled { color: var(--subtle); cursor: wait; text-decoration: none; }
 .toggle {
   position: relative;
   width: 44px;
@@ -1375,7 +1406,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .candidate-explainer span { color: var(--subtle); font-size: 11px; line-height: 1.55; }
 .error-project { display: block; margin-top: 8px; color: var(--ink-soft); font-weight: 600; }
 .error-main a { color: var(--action); font-size: 11px; text-decoration: none; }
-.source-row { grid-template-columns: minmax(250px, 1.6fr) 110px 130px 130px 145px 65px 90px; }
+.source-row { grid-template-columns: minmax(280px, 1.8fr) 110px 140px 140px 145px 65px; }
 .source-row > div:first-child a + a { margin-top: 2px; }
 
 @media (max-width: 900px) {

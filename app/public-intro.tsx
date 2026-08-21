@@ -1,7 +1,7 @@
 import { siteConfig } from "./site-config";
 
 const workflow = [
-  ["每天巡检", "每天 07:30 定时访问 5 个已适配的公共资源交易中心。"],
+  ["每天巡检", "每天 07:30 定时访问 18 个已适配的公共资源交易中心。"],
   ["整理关键信息", "提取项目名称、标段、总投资、招标人、代理机构与投标截止时间。"],
   ["生成每日汇总", "从同一份真实项目快照计算今日新增、3 天内截止和运行异常。"],
 ];
@@ -31,7 +31,7 @@ export function PublicIntro() {
         <div className="public-hero-copy">
           <p className="public-kicker">{siteConfig.fullName}</p>
           <h1>帮监理企业更早发现<br />值得跟进的标讯。</h1>
-          <p className="public-lead">每天巡检 5 个已接入的公共资源交易网站，把截止时间、项目规模和关键单位整理成一张表。所有项目都能回到自己的原公告核验。</p>
+          <p className="public-lead">每天巡检 18 个已接入的公共资源交易网站，把截止时间、项目规模和关键单位整理成一张表。所有项目都能回到自己的原公告核验。</p>
           <div className="public-actions">
             <a className="public-primary" href="./radar/">进入项目雷达</a>
             <a className="public-secondary" href="#how-it-works">了解怎么工作</a>
@@ -41,7 +41,7 @@ export function PublicIntro() {
         <div className="radar-visual" aria-label="招标信息处理示意">
           <div className="radar-visual-head"><span>真实数据闭环</span><small>每日 07:30 扫描</small></div>
           <div className="radar-counts">
-            <div><small>已接入来源</small><strong>5</strong><span>公共资源交易中心</span></div>
+            <div><small>已接入来源</small><strong>18</strong><span>公共资源交易中心</span></div>
             <div className="urgent"><small>每日汇总</small><strong>1</strong><span>同日扫描只更新</span></div>
           </div>
           <div className="radar-row"><i /><span><b>项目与公告一一对应</b><small>项目名称、正文与原公告域名共同核验</small></span><em>真实数据</em></div>
@@ -52,7 +52,7 @@ export function PublicIntro() {
       </div>
 
       <div className="public-value-strip" aria-label="产品特点">
-        <div><strong>5 个</strong><span>已适配真实信息源</span></div>
+        <div><strong>18 个</strong><span>已适配真实信息源</span></div>
         <div><strong>一张表</strong><span>看清项目和截止时间</span></div>
         <div><strong>每日一份</strong><span>真实项目汇总数据</span></div>
         <div><strong>原公告直达</strong><span>所有结论可回源核验</span></div>
@@ -109,7 +109,7 @@ export function PublicFooter() {
       <div className="legal-panels">
         <section id="privacy">
           <h2>隐私说明</h2>
-          <p>当前版本仅供内部试用，不对外开放注册或收费，也不收集身份证、付款信息等敏感个人信息。浏览器本地仅保存管理后台中手动添加的候选信息源配置；清除浏览器数据即可移除。未来增加外部账号、日志、消息推送或收费能力前，将先更新完整隐私政策并说明处理目的、范围和保存期限。</p>
+          <p>当前版本仅供内部试用，不对外开放注册或收费，也不收集身份证、付款信息等敏感个人信息。公开页面只读取 GitHub Pages 发布的项目与信息源快照，不提供网页新增信息源或云端保存。未来增加外部账号、日志、消息推送或收费能力前，将先更新完整隐私政策并说明处理目的、范围和保存期限。</p>
         </section>
         <section id="terms">
           <h2>服务条款</h2>
