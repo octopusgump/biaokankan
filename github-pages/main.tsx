@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import Home, { RadarApp } from "../app/page";
+import Home, { RadarApp, type RadarSnapshot } from "../app/page";
+import { PreviewAccess } from "./preview-access";
 import "../app/globals.css";
 
 const root = document.getElementById("root");
@@ -13,16 +14,20 @@ const pathname = window.location.pathname
   .replace(/^\/biaokankan(?=\/|$)/, "")
   .replace(/\/+$/, "") || "/";
 
-const page = pathname === "/radar/admin"
-  ? <RadarApp initialView="admin" />
-  : pathname === "/radar/project"
-    ? <RadarApp initialView="radar" detailFromQuery />
-    : pathname === "/radar"
-      ? <RadarApp initialView="radar" />
-      : <Home />;
+function pageForRoute(snapshot: RadarSnapshot | null) {
+  return pathname === "/radar/admin"
+    ? <RadarApp initialView="admin" initialSnapshot={snapshot} />
+    : pathname === "/radar/project"
+      ? <RadarApp initialView="radar" detailFromQuery initialSnapshot={snapshot} />
+      : pathname === "/radar"
+        ? <RadarApp initialView="radar" initialSnapshot={snapshot} />
+        : <Home />;
+}
 
 createRoot(root).render(
   <StrictMode>
-    {page}
+    {import.meta.env.BIAOKANKAN_PAGES_ENCRYPTED
+      ? <PreviewAccess>{pageForRoute}</PreviewAccess>
+      : pageForRoute(null)}
   </StrictMode>,
 );

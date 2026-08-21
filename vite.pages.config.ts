@@ -1,4 +1,4 @@
-import { copyFile, mkdir } from "node:fs/promises";
+import { copyFile, cp, mkdir } from "node:fs/promises";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -23,11 +23,27 @@ function githubPagesRoutes() {
   };
 }
 
+function safePublicAssets() {
+  return {
+    name: "safe-public-assets",
+    apply: "build" as const,
+    async closeBundle() {
+      const publicRoot = new URL("./public/", import.meta.url);
+      const outputRoot = new URL("./pages-dist/", import.meta.url);
+      await cp(publicRoot, outputRoot, {
+        recursive: true,
+        filter: (source) => !source.endsWith("/data/radar.json"),
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: "github-pages",
   base: "/biaokankan/",
-  publicDir: "../public",
-  plugins: [react(), githubPagesRoutes()],
+  define: { "import.meta.env.BIAOKANKAN_PAGES_ENCRYPTED": "true" },
+  publicDir: false,
+  plugins: [react(), githubPagesRoutes(), safePublicAssets()],
   build: {
     outDir: "../pages-dist",
     emptyOutDir: true,

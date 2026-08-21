@@ -41,7 +41,7 @@ type ScanRun = {
 
 type ScanError = { id: string; level: string; source: string; project?: string; url?: string; time: string; detail: string; action?: string };
 type DailySummary = { date: string; generatedAt: string; newProjectCount: number; expiringWithin3DaysCount: number; earliestProjects: Array<{ projectId: number; name: string; section: string; deadline: string }>; abnormalSourceCount: number };
-type RadarSnapshot = { schemaVersion: number; mode: "live"; generatedAt: string | null; projects: Project[]; sources: Source[]; run: ScanRun | null; summary: DailySummary | null; errors: ScanError[] };
+export type RadarSnapshot = { schemaVersion: number; mode: "live"; generatedAt: string | null; projects: Project[]; sources: Source[]; run: ScanRun | null; summary: DailySummary | null; errors: ScanError[] };
 
 const sortStorageKey = "biaokankan-project-sort-v1";
 const sortOptions: Array<{ value: SortMode; label: string }> = [
@@ -230,7 +230,7 @@ function SelectMenu<T extends string>({ label, value, options, onChange, variant
   </div>;
 }
 
-export function RadarApp({ initialView = "radar", detailFromQuery = false }: { initialView?: MainView; detailFromQuery?: boolean }) {
+export function RadarApp({ initialView = "radar", detailFromQuery = false, initialSnapshot = null }: { initialView?: MainView; detailFromQuery?: boolean; initialSnapshot?: RadarSnapshot | null }) {
   const [view] = useState<MainView>(initialView);
   const [tab, setTab] = useState<RadarTab>("today");
   const [sortMode, setSortMode] = useState<SortMode>("deadline");
@@ -242,10 +242,14 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false }: { i
   const [reload, setReload] = useState(0); const [mobileNav, setMobileNav] = useState(false);
 
   useEffect(() => { let cancelled = false; (async () => { setDataState("loading"); try {
-    const response = await fetch(appHref("/data/radar.json"), { cache: "no-store" }); if (!response.ok) throw new Error();
-    const snapshot = await response.json() as RadarSnapshot; if (snapshot.mode !== "live" || !Array.isArray(snapshot.projects) || !Array.isArray(snapshot.sources)) throw new Error();
+    let snapshot = initialSnapshot;
+    if (!snapshot) {
+      const response = await fetch(appHref("/data/radar.json"), { cache: "no-store" }); if (!response.ok) throw new Error();
+      snapshot = await response.json() as RadarSnapshot;
+    }
+    if (snapshot.mode !== "live" || !Array.isArray(snapshot.projects) || !Array.isArray(snapshot.sources)) throw new Error();
     if (cancelled) return; setProjects(snapshot.projects.map((project) => normalizeProjectTimeFields(project) as Project)); setSources(snapshot.sources); setRun(snapshot.run); setSummary(snapshot.summary); setErrors(snapshot.errors || []); setGeneratedAt(snapshot.generatedAt); setDataState(snapshot.run ? "ready" : "never");
-  } catch { if (!cancelled) { setProjects([]); setSources([]); setRun(null); setSummary(null); setErrors([]); setGeneratedAt(null); setDataState("unavailable"); } } })(); return () => { cancelled = true; }; }, [reload, view]);
+  } catch { if (!cancelled) { setProjects([]); setSources([]); setRun(null); setSummary(null); setErrors([]); setGeneratedAt(null); setDataState("unavailable"); } } })(); return () => { cancelled = true; }; }, [initialSnapshot, reload, view]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {

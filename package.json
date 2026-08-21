@@ -9,10 +9,11 @@
   "scripts": {
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
-    "build:pages": "vite build --config vite.pages.config.ts && node --test tests/pages-routes.test.mjs",
+    "build:pages": "vite build --config vite.pages.config.ts && node scripts/encrypt-pages-data.mjs && node --test tests/pages-routes.test.mjs tests/pages-encryption.test.mjs",
     "build:china": "vite build --config vite.china.config.ts",
     "crawl": "node crawler/run.mjs",
     "test:crawler": "node --test tests/crawler.test.mjs",
+    "rotate:pages-key": "node scripts/rotate-pages-preview-key.mjs",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "pnpm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern pages-dist --ignore-pattern china-dist",
