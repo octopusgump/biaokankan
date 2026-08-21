@@ -36,9 +36,20 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Refresh tender data
+        if: github.event_name != 'push'
+        continue-on-error: true
         env:
           TENDER_PREVIOUS_SNAPSHOT_URL: https://octopusgump.github.io/biaokankan/data/radar.json
-        run: pnpm crawl
+          TENDER_SNAPSHOT_BACKUP: ${{ runner.temp }}/radar-before-crawl.json
+        run: cp public/data/radar.json "$TENDER_SNAPSHOT_BACKUP" && pnpm crawl
+
+      - name: Keep the last fully verified snapshot
+        if: always() && github.event_name != 'push'
+        env:
+          TENDER_SNAPSHOT_BACKUP: ${{ runner.temp }}/radar-before-crawl.json
+        shell: bash
+        run: |
+          node -e 'const fs = require("node:fs"); const target = "public/data/radar.json"; let valid = false; try { const snapshot = JSON.parse(fs.readFileSync(target, "utf8")); valid = snapshot.run?.status === "成功" && snapshot.run?.succeededSources === snapshot.run?.sourceCount; } catch {} if (!valid) { fs.copyFileSync(process.env.TENDER_SNAPSHOT_BACKUP, target); console.log("本次扫描未全部成功，继续发布上一份完整快照"); }'
 
       - name: Build static site
         run: pnpm build:pages
