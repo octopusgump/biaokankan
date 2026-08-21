@@ -11,6 +11,7 @@ const TAGS = /<[^>]+>/g;
 
 export function decodeHtml(input = "") {
   return String(input)
+    .replace(/<!--[\s\S]*?-->/g, " ")
     .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
     .replace(BLOCK_TAGS, "\n")
@@ -295,7 +296,7 @@ export function retainProjectWithLatestLinkState(project, source) {
 }
 
 export function extractProject({ title, html, text: providedText, url, publishedAt, source, originalAvailable = true, linkFailureReason = null }, now = new Date()) {
-  const text = flattenText(providedText || html);
+  const text = flattenText(html || providedText);
   if (!isSupervisionText(`${title} ${text}`)) return null;
   const deadline = extractDeadline(text, normalizePublishedAt(publishedAt));
   const presentation = deadlinePresentation(deadline, now);

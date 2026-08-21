@@ -34,7 +34,7 @@ test("server-renders the public landing page without the workbench", async () =>
   assert.match(html, /隐私说明/);
   assert.match(html, /ICP备案号待审核通过后公示/);
   assert.match(html, /项目雷达/);
-  assert.match(html, /7 个已适配/);
+  assert.match(html, /18 个已适配/);
   assert.doesNotMatch(html, /正在读取真实扫描数据|搜索项目名称、招标人或代理机构/);
   assert.doesNotMatch(html, /河南省政府采购网|河南兴达工程咨询官网/);
   assert.doesNotMatch(html, /模拟发送|演示数据模式/);
@@ -65,7 +65,8 @@ test("server-renders system management as an independent route", async () => {
   const html = await response.text();
   const body = (html.split("</head><body>")[1] || html).split("<script")[0];
   assert.match(html, /信息源管理/);
-  assert.match(html, /添加信息源/);
+  assert.match(html, /GitHub Pages 只读版/);
+  assert.doesNotMatch(html, /添加信息源|保存到云端|检测并接入|立即扫描/);
   assert.doesNotMatch(body, /帮监理企业更早发现|隐私说明/);
 });
 
@@ -93,16 +94,14 @@ test("removes starter artifacts and ships product metadata", async () => {
   assert.match(page, /首次发现时间/);
   assert.match(page, /扫描时间/);
   assert.match(page, /更新时间/);
-  assert.match(page, /先保存，再确认爬取/);
-  assert.match(page, /检测并接入/);
-  assert.match(page, /action: "probe"/);
+  assert.match(page, /公开页面只读/);
+  assert.doesNotMatch(page, /sourceApi|candidateStorageKey|action: "probe"/);
   assert.match(page, /扫描成功/);
   assert.match(page, /biaokankan-project-sort-v1/);
   assert.match(page, /localStorage\.setItem\(sortStorageKey, value\)/);
   assert.match(page, /function SelectMenu/);
   assert.match(page, /role="listbox"/);
   assert.match(page, /className="select-native"/);
-  assert.match(page, /label="来源类型"/);
   assert.match(styles, /backdrop-filter: blur\(10px\) saturate\(125%\)/);
   assert.match(styles, /\.select-native \{ display: flex; \}/);
   assert.doesNotMatch(page, /fallbackProjects|ReminderCenter|机会评分/);

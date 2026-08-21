@@ -927,12 +927,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   font-size: 12px;
 }
 .admin-heading > span { color: var(--subtle); font-size: 12px; }
-.source-table { min-width: 1080px; }
+.source-table { min-width: 900px; }
 .source-row {
   min-height: 72px;
   padding: 12px 28px;
   display: grid;
-  grid-template-columns: minmax(230px, 1.5fr) 105px 135px 130px 105px 55px 170px;
+  grid-template-columns: minmax(260px, 1.7fr) 110px 140px 140px 120px 65px;
   gap: 14px;
   align-items: center;
   border-top: 1px solid var(--divider);
@@ -1406,7 +1406,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .candidate-explainer span { color: var(--subtle); font-size: 11px; line-height: 1.55; }
 .error-project { display: block; margin-top: 8px; color: var(--ink-soft); font-weight: 600; }
 .error-main a { color: var(--action); font-size: 11px; text-decoration: none; }
-.source-row { grid-template-columns: minmax(250px, 1.6fr) 110px 130px 130px 145px 65px 90px; }
+.source-row { grid-template-columns: minmax(280px, 1.8fr) 110px 140px 140px 145px 65px; }
 .source-row > div:first-child a + a { margin-top: 2px; }
 
 @media (max-width: 900px) {
