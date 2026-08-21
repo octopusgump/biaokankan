@@ -1,0 +1,9 @@
+[biaokankan-auth]
+enabled = true
+filter = biaokankan-auth
+port = http,https
+logpath = /var/log/nginx/biaokankan.access.log
+backend = auto
+maxretry = 5
+findtime = 15m
+bantime = 15m

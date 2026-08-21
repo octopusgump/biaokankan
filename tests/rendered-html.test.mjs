@@ -3,24 +3,13 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render(path = "/", headers = {}) {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+  const serverUrl = new URL("../dist/server/index.js", import.meta.url);
+  serverUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
+  const { default: handler } = await import(serverUrl.href);
 
-  return worker.fetch(
-    new Request(`http://localhost${path}`, {
-      headers: { accept: "text/html", ...headers },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
+  return handler(new Request(`http://localhost${path}`, {
+    headers: { accept: "text/html", ...headers },
+  }));
 }
 
 test("server-renders the public landing page without the workbench", async () => {
@@ -34,8 +23,9 @@ test("server-renders the public landing page without the workbench", async () =>
   assert.match(html, /隐私说明/);
   assert.match(html, /ICP备案号待审核通过后公示/);
   assert.match(html, /项目雷达/);
-  assert.match(html, /18 个已适配/);
-  assert.doesNotMatch(html, /正在读取真实扫描数据|搜索项目名称、招标人或代理机构/);
+  assert.match(html, /18 个已接入来源/);
+  assert.match(html, /正在读取真实扫描数据/);
+  assert.doesNotMatch(html, /搜索项目名称、招标人或代理机构/);
   assert.doesNotMatch(html, /河南省政府采购网|河南兴达工程咨询官网/);
   assert.doesNotMatch(html, /模拟发送|演示数据模式/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|react-loading-skeleton/i);
@@ -57,10 +47,7 @@ test("server-renders the project radar as an independent route", async () => {
 });
 
 test("server-renders system management as an independent route", async () => {
-  const response = await render("/radar/admin", {
-    "oai-authenticated-user-id": "test-admin",
-    "oai-authenticated-user-email": "admin@example.com",
-  });
+  const response = await render("/radar/admin");
   assert.equal(response.status, 200);
   const html = await response.text();
   const body = (html.split("</head><body>")[1] || html).split("<script")[0];
@@ -113,5 +100,9 @@ test("removes starter artifacts and ships product metadata", async () => {
   assert.doesNotMatch(page, /fallbackProjects|ReminderCenter|机会评分/);
   assert.match(layout, /title:\s*"标看看｜监理标讯助手"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+  assert.doesNotMatch(packageJson, /cloudflare|drizzle|wrangler|@openai\/sites/i);
   await assert.rejects(access(new URL("../app/_sites-preview/SkeletonPreview.tsx", import.meta.url)));
+  await assert.rejects(access(new URL("../app/api/sources/route.ts", import.meta.url)));
+  await assert.rejects(access(new URL("../worker/index.ts", import.meta.url)));
+  await assert.rejects(access(new URL("../.openai/hosting.json", import.meta.url)));
 });

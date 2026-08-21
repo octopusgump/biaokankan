@@ -1,6 +1,6 @@
 # 标看看｜GitHub Pages 临时加密试用
 
-> 对应需求：[PRD_002｜企业访问控制与账号系统](../prd/PRD_002_企业访问控制与账号系统.md)
+> 对应需求：[PRD_002A｜GitHub Pages 临时加密试用](../prd/PRD_002A_GitHub_Pages临时加密试用.md)
 >
 > 适用时间：ICP 审核期间。这里只处理 GitHub Pages，不修改 ECS、域名、DNS 或正式账号系统。
 

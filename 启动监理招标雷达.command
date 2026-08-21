@@ -30,7 +30,7 @@ if curl -fsS "$LOCAL_URL" >/dev/null 2>&1; then
   exit 0
 fi
 
-echo "正在启动监理招标信息雷达…"
+echo "正在启动标看看…"
 echo "启动成功后会自动打开浏览器。"
 echo "请保持此窗口开启；关闭窗口即可停止网站。"
 echo
