@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { collapseDuplicates, deadlinePresentation, extractAnchors, extractProject, isSupervisionText, projectIdentity, retainProjectWithLatestLinkState, supervisionScope, withinRetention } from "../crawler/core.mjs";
+import { collapseDuplicates, deadlinePresentation, extractAnchors, extractProject, isSupervisionText, projectFingerprint, projectIdentity, retainProjectWithLatestLinkState, supervisionScope, withinRetention } from "../crawler/core.mjs";
+import { runScan } from "../crawler/scan-run.mjs";
+import { lowEntryIssue } from "../crawler/sources.mjs";
+import { evaluateSnapshot } from "../scripts/verify-snapshot.mjs";
 import { buildSummary } from "../crawler/summary.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
 import { classifyBidDeadline, documentAcquirePresentation, normalizeProjectTimeFields } from "../shared/project-time.mjs";
@@ -73,6 +76,69 @@ test("extracts investments when punctuation and approximation qualifiers are cha
 
     assert.ok(project);
     assert.equal(project.investment, expected, sentence);
+  }
+});
+
+function investmentOf(sentence) {
+  const project = extractProject({
+    title: "投资召回测试监理项目",
+    html: `<h2>投资召回测试监理项目</h2><p>${sentence}</p>`,
+    url: `https://example.test/investment-recall/${encodeURIComponent(sentence)}`,
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+  assert.ok(project, sentence);
+  return project.investment;
+}
+
+// 线上快照里 43/62 个项目的「总投资」是待核验，下面每条都取自 public/data/radar.json
+// 中真实存在、但旧的两个正则识别不出来的写法。
+test("recovers investment from real-world label variants missed by the two legacy patterns", () => {
+  const cases = [
+    // 政府站把 PDF 转成 HTML 时会在数字中间插空格（同一段里的「202 6 年」是同样成因）。
+    ["本建设工程项目总投资约为 5 80 万元，最终金额以经政府相关部门审定的为准。", "580.00 万元"],
+    // 「总投资」后面多一个「额」字。
+    ["项目总投资额约为 3920.29万元。", "3,920.29 万元"],
+    // 亿元计价。
+    ["项目地块用地性质为商业用地，总投资约 7.2亿元。", "72,000.00 万元"],
+    // 元计价，需要换算成万元。
+    ["本项目投资估算为 29037408.97 元。", "2,903.74 万元"],
+    // 「工程投资」而不是「总投资」。
+    ["工程投资约780万元。", "780.00 万元"],
+    // 「建安投资」，旧正则只认「建安费」。
+    ["工程建安投资约 51919.3 万元，施工计划工期约 31 个月。", "51,919.30 万元"],
+    // 「计划投资」。
+    ["2.3项目计划投资： 1947.73万元。", "1,947.73 万元"],
+    // 标签与金额之间隔着一小段限定语。
+    ["2.5项目投资金额：本项目工程概算为63711.6万元，本项目为费率报价。", "63,711.60 万元"],
+    ["2.4 投资预算：本项目暂估工程费用约24167.04万元。", "24,167.04 万元"],
+    // 「总投资额度」旧正则读不到，于是退而读括号里的建安费，报出了偏小的数字。
+    ["2.4 总投资额度：约 8000 万元（其中建安费约： 6483.53 万元）。", "8,000.00 万元"],
+  ];
+
+  for (const [sentence, expected] of cases) {
+    assert.equal(investmentOf(sentence), expected, sentence);
+  }
+});
+
+// 召回率不能靠猜：PRD 要求识别不出来的字段只能显示「待核验」。
+test("keeps 待核验 rather than guessing from section-scoped or unrelated amounts", () => {
+  const cases = [
+    // 金额被限定到某个标段，不是项目总投资。
+    "2.2投资金额：一标段：38809958.34元。",
+    "2. 3、 预算金额 ： 29037408.97 元 (1标段： 18705299.47 元)",
+    // 逗号之后的金额属于另一个字段，不能跨句抓。
+    "本项目总投资由上级财政资金安排，投标保证金 5 万元。",
+    // 招标控制价、监理服务费都不是总投资。
+    "本次招标最高投标限价为 88.66 万元。",
+    "监理服务费为 50 万元。",
+    // 「投资」后面跟的根本不是金额单位。
+    "总投资规模详见招标文件，总建筑面积 41943.94 平方米。",
+    "2.4 建设规模：建设用地面积 4272.48 平方米，总建筑面积 41943.94 平方米。",
+  ];
+
+  for (const sentence of cases) {
+    assert.equal(investmentOf(sentence), "待核验", sentence);
   }
 });
 
@@ -707,4 +773,323 @@ test("published snapshot stays live, source-bound and link-unique", async () => 
     assert.equal(project.bidDeadlineVerifiedAt, null, project.name);
     assert.equal(project.deadlineState, "pending", project.name);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 爬虫韧性：runScan 流水线、来源静默失效、截止时间静默降级、发布门禁
+// ---------------------------------------------------------------------------
+
+const fixtureSource = {
+  id: 99,
+  key: "fixture",
+  name: "夹具市公共资源交易中心",
+  entry: "https://fixture.test/",
+  listEntry: "https://fixture.test/list",
+  region: "河南省 · 夹具市",
+  type: "公共资源交易中心",
+  adapter: "generic-html",
+};
+
+const RUN_STARTED = new Date("2026-08-05T09:00:00+08:00");
+const RUN_FINISHED = new Date("2026-08-05T09:01:00+08:00");
+
+function fixtureProject({ id = 1, deadlineSentence = "投标截止时间：2026年8月24日09时30分。" } = {}) {
+  const title = `夹具县第${id}排水管网改造工程监理标段招标公告`;
+  return extractProject({
+    title,
+    html: `<h2>${title}</h2><p>项目总投资为 1000 万元。</p><p>${deadlineSentence}</p>`,
+    url: `https://fixture.test/notice/${id}`,
+    publishedAt: "2026-08-01",
+    source: fixtureSource,
+  }, RUN_STARTED);
+}
+
+function previousSnapshot(projects, extra = {}) {
+  return {
+    projects,
+    sources: [{ ...fixtureSource, result: "成功", found: projects.length, read: projects.length }],
+    summaries: [],
+    runs: [],
+    errors: [],
+    ...extra,
+  };
+}
+
+function memoryStore(previous) {
+  return {
+    saved: null,
+    async load() { return previous; },
+    async save(snapshot) { this.saved = snapshot; },
+  };
+}
+
+function stubScan(value) {
+  return async () => (value instanceof Error ? Promise.reject(value) : {
+    read: 0,
+    projects: [],
+    issues: [],
+    listAvailable: true,
+    homeAvailable: null,
+    ...value,
+  });
+}
+
+async function scan({ previous, value, sources = [fixtureSource] }) {
+  const store = memoryStore(previous);
+  const result = await runScan({
+    sourceDefinitions: sources,
+    scanSource: stubScan(value),
+    store,
+    startedAt: RUN_STARTED,
+    finishedAt: RUN_FINISHED,
+  });
+  return { ...result, store };
+}
+
+// P3-20：runScan 必须能在不联网、不碰 public/data/radar.json 的情况下跑完整条流水线。
+test("runScan drives the whole pipeline through injected dependencies", async () => {
+  const fresh = fixtureProject({ id: 1 });
+  const { snapshot, store, run } = await scan({
+    previous: previousSnapshot([]),
+    value: { read: 1, projects: [fresh] },
+  });
+
+  assert.equal(snapshot.projects.length, 1);
+  assert.equal(snapshot.projects[0].url, "https://fixture.test/notice/1");
+  assert.equal(run.newProjects, 1);
+  assert.equal(run.status, "成功");
+  assert.equal(run.sourceCount, 1);
+  // 快照必须真的落盘到注入的 store，而不是只在内存里算一遍。
+  assert.equal(store.saved?.projects.length, 1);
+  assert.equal(store.saved?.schemaVersion, 4);
+});
+
+// B-1：适配器不抛错但读到 0 条时，旧实现记「成功」并把该来源的历史项目全部删光。
+test("a source that silently reads zero entries is reported as 部分失败 and keeps its history", async () => {
+  const old = { ...fixtureProject({ id: 1 }), source: fixtureSource.name };
+  const { snapshot, run } = await scan({
+    previous: previousSnapshot([old]),
+    value: { read: 0, projects: [] },
+  });
+
+  assert.equal(snapshot.sources[0].result, "部分失败", "读到 0 条不能算成功");
+  assert.equal(run.status, "部分失败");
+  // 历史项目必须保住——这是这条故障链里损失最大的一环。
+  assert.equal(snapshot.projects.length, 1);
+  assert.equal(snapshot.projects[0].url, "https://fixture.test/notice/1");
+  const alert = snapshot.errors.find((error) => error.level === "来源疑似失效");
+  assert.ok(alert, "必须留下一条可供人工核对的告警");
+  assert.equal(alert.source, fixtureSource.name);
+  assert.match(alert.detail, /只读到 0 条/);
+});
+
+// 显式抛错的适配器（epoint / henan / luohe）原本行为就是对的，不能改坏。
+test("a source that throws still keeps its history and records 扫描失败", async () => {
+  const old = { ...fixtureProject({ id: 1 }), source: fixtureSource.name };
+  const { snapshot, run } = await scan({
+    previous: previousSnapshot([old]),
+    value: new Error("列表接口缺少 records"),
+  });
+
+  assert.equal(snapshot.sources[0].result, "失败");
+  assert.equal(run.status, "失败");
+  assert.equal(snapshot.projects.length, 1);
+  assert.equal(snapshot.errors[0].level, "扫描失败");
+  assert.equal(snapshot.errors[0].detail, "列表接口缺少 records");
+});
+
+// 确实长期没有监理公告的来源可以退出该检查，否则会永远停在部分失败。
+test("a source may opt out of the zero-entry alarm with minExpectedEntries", async () => {
+  const { snapshot, run } = await scan({
+    previous: previousSnapshot([]),
+    value: { read: 0, projects: [] },
+    sources: [{ ...fixtureSource, minExpectedEntries: 0 }],
+  });
+
+  assert.equal(snapshot.sources[0].result, "成功");
+  assert.equal(run.status, "成功");
+  assert.equal(snapshot.errors.length, 0);
+});
+
+test("lowEntryIssue only fires below the source's own threshold", () => {
+  assert.equal(lowEntryIssue(fixtureSource, 1), null);
+  assert.equal(lowEntryIssue({ ...fixtureSource, minExpectedEntries: 3 }, 3), null);
+  assert.ok(lowEntryIssue(fixtureSource, 0));
+  assert.ok(lowEntryIssue({ ...fixtureSource, minExpectedEntries: 3 }, 2));
+  assert.equal(lowEntryIssue({ ...fixtureSource, minExpectedEntries: 0 }, 0), null);
+});
+
+// B-1：完全成功的来源才算「问题已解决」，部分失败的来源不能把自己的历史错误抹平。
+test("history errors survive a partially failed source and collapse duplicates", async () => {
+  const zeroEntryAlarm = {
+    id: "fixture-old-alarm",
+    level: "来源疑似失效",
+    source: fixtureSource.name,
+    project: `${fixtureSource.name}公告列表`,
+    url: fixtureSource.listEntry,
+    time: "2026-08-04 09:00",
+    detail: "列表只读到 0 条监理公告，低于最低预期 1 条；无法区分「本期确实没有监理项目」与「上游改版导致适配器失效」",
+    action: "人工打开列表页核对，必要时修复适配器或声明 minExpectedEntries",
+  };
+  // 内容与本轮告警不同的历史记录，只有它才能证明历史真的被保住了。
+  const earlierOutage = {
+    id: "fixture-old-outage",
+    level: "扫描失败",
+    source: fixtureSource.name,
+    time: "2026-08-03 09:00",
+    detail: "列表页请求超时",
+    action: "检查来源适配器",
+  };
+
+  const failing = await scan({
+    previous: previousSnapshot([], { errors: [zeroEntryAlarm, earlierOutage] }),
+    value: { read: 0, projects: [] },
+  });
+  assert.ok(
+    failing.snapshot.errors.some((error) => error.detail === "列表页请求超时"),
+    "来源仍未恢复时，历史故障记录不能被本轮的「成功」抹掉",
+  );
+  assert.equal(
+    failing.snapshot.errors.filter((error) => error.level === "来源疑似失效").length,
+    1,
+    "内容相同的告警不能每轮再堆一份",
+  );
+
+  const recovered = await scan({
+    previous: previousSnapshot([], { errors: [zeroEntryAlarm, earlierOutage] }),
+    value: { read: 1, projects: [fixtureProject({ id: 1 })] },
+  });
+  assert.equal(recovered.snapshot.errors.length, 0, "来源完全恢复后历史告警应清除");
+});
+
+// B-2：沿用上一轮已确认的截止时间可以，但不能连降级本身一起抹掉。
+test("a degraded bid deadline keeps the old value but leaves a visible trace", async () => {
+  const old = {
+    ...fixtureProject({ id: 1 }),
+    source: fixtureSource.name,
+    bidDeadline: "2026-08-24 09:30",
+    bidDeadlineStatus: "confirmed",
+    bidDeadlineEvidence: "投标截止时间：2026年8月24日09时30分。",
+    bidDeadlineVerifiedAt: "2026-08-04 09:00",
+  };
+  old.fingerprint = projectFingerprint(old);
+
+  const degraded = fixtureProject({ id: 1, deadlineSentence: "投标截止时间详见公告正文。" });
+  assert.equal(degraded.bidDeadlineStatus, "pending", "夹具本身要真的解析不出截止时间");
+
+  const { snapshot, run } = await scan({
+    previous: previousSnapshot([old]),
+    value: { read: 1, projects: [degraded] },
+  });
+
+  const merged = snapshot.projects[0];
+  assert.equal(merged.bidDeadline, "2026-08-24 09:30", "旧值仍然沿用");
+  assert.equal(merged.bidDeadlineStale, true, "但必须标记为沿用值");
+  assert.ok(merged.pendingFields?.includes("投标截止时间"), "人工核验告警不能消失");
+  assert.notEqual(merged.fingerprint, old.fingerprint, "指纹必须变化，运维才看得见");
+  assert.equal(run.updatedProjects, 1);
+  assert.equal(merged.related?.type, "内容更新");
+});
+
+// B-2：公告显式改口说「见招标文件」时，新事实应当胜出，而不是继续沿用旧的 confirmed。
+test("an announcement that explicitly defers to the tender document overrides the old deadline", async () => {
+  const old = {
+    ...fixtureProject({ id: 1 }),
+    source: fixtureSource.name,
+    bidDeadline: "2026-08-24 09:30",
+    bidDeadlineStatus: "confirmed",
+    bidDeadlineEvidence: "投标截止时间：2026年8月24日09时30分。",
+    bidDeadlineVerifiedAt: "2026-08-04 09:00",
+  };
+  old.fingerprint = projectFingerprint(old);
+
+  const deferred = fixtureProject({ id: 1, deadlineSentence: "投标截止时间：详见招标文件。" });
+  assert.equal(deferred.bidDeadlineStatus, "document_required", "夹具本身要真的判成 document_required");
+
+  const { snapshot } = await scan({
+    previous: previousSnapshot([old]),
+    value: { read: 1, projects: [deferred] },
+  });
+
+  const merged = snapshot.projects[0];
+  assert.equal(merged.bidDeadlineStatus, "document_required");
+  assert.equal(merged.bidDeadline, null);
+  assert.notEqual(merged.bidDeadlineStale, true);
+});
+
+// 真延期时新值正常覆盖旧值，这一行原本就是对的，不能改坏。
+test("a genuinely rescheduled deadline still overrides the retained one", async () => {
+  const old = {
+    ...fixtureProject({ id: 1 }),
+    source: fixtureSource.name,
+    bidDeadline: "2026-08-24 09:30",
+    bidDeadlineStatus: "confirmed",
+    bidDeadlineEvidence: "投标截止时间：2026年8月24日09时30分。",
+    bidDeadlineVerifiedAt: "2026-08-04 09:00",
+  };
+  old.fingerprint = projectFingerprint(old);
+
+  const rescheduled = fixtureProject({ id: 1, deadlineSentence: "投标截止时间：2026年9月10日09时30分。" });
+  const { snapshot } = await scan({
+    previous: previousSnapshot([old]),
+    value: { read: 1, projects: [rescheduled] },
+  });
+
+  const merged = snapshot.projects[0];
+  assert.equal(merged.bidDeadline, "2026-09-10 09:30");
+  assert.equal(merged.bidDeadlineStatus, "confirmed");
+  assert.notEqual(merged.bidDeadlineStale, true);
+});
+
+// 指纹升级不能让全部存量项目集体误报「内容更新」。
+test("the stale flag changes the fingerprint without disturbing healthy projects", () => {
+  const project = fixtureProject({ id: 1 });
+  assert.equal(projectFingerprint(project), projectFingerprint({ ...project, bidDeadlineStale: false }));
+  assert.notEqual(projectFingerprint(project), projectFingerprint({ ...project, bidDeadlineStale: true }));
+});
+
+// B-3：门禁按「数据有没有塌方」判断，而不是按「18/18 全绿」判断。
+test("the publish gate accepts a partial run but rejects a collapsed snapshot", () => {
+  const snapshotOf = (projectCount, run) => ({
+    projects: Array.from({ length: projectCount }, (_, index) => ({ url: `https://fixture.test/notice/${index}` })),
+    sources: [],
+    run,
+  });
+  const previous = snapshotOf(62, { status: "成功", sourceCount: 18, succeededSources: 18 });
+
+  // 旧门禁把这一轮整体丢弃，只因为 18 个来源里有 1 个部分失败。
+  const partial = snapshotOf(60, { status: "部分失败", sourceCount: 18, succeededSources: 18 });
+  assert.equal(evaluateSnapshot(partial, previous).accepted, true);
+
+  // 旧门禁会放行这份空快照，因为它 18/18「成功」。
+  const empty = snapshotOf(0, { status: "成功", sourceCount: 18, succeededSources: 18 });
+  const emptyResult = evaluateSnapshot(empty, previous);
+  assert.equal(emptyResult.accepted, false);
+  assert.match(emptyResult.reasons.join(" "), /0 个项目/);
+
+  // 数据塌方一半以上也要拦。
+  assert.equal(evaluateSnapshot(snapshotOf(20, { status: "部分失败", sourceCount: 18, succeededSources: 17 }), previous).accepted, false);
+  // 多数来源掉线时这轮数据不值得信。
+  assert.equal(evaluateSnapshot(snapshotOf(60, { status: "部分失败", sourceCount: 18, succeededSources: 8 }), previous).accepted, false);
+  // 整轮失败必拦。
+  assert.equal(evaluateSnapshot(snapshotOf(60, { status: "失败", sourceCount: 18, succeededSources: 0 }), previous).accepted, false);
+  // 首次部署没有上一份快照时不应误拦。
+  assert.equal(evaluateSnapshot(snapshotOf(5, { status: "成功", sourceCount: 18, succeededSources: 18 }), null).accepted, true);
+  // 无法解析的快照必拦。
+  assert.equal(evaluateSnapshot(null, previous).accepted, false);
+});
+
+test("the publish gate names silently empty sources without blocking the release", () => {
+  const next = {
+    projects: [{ url: "https://fixture.test/notice/1" }],
+    sources: [
+      { name: "焦作市公共资源交易中心", read: 0, result: "部分失败" },
+      { name: "郑州市公共资源交易中心", read: 12, result: "成功" },
+      { name: "掉线市公共资源交易中心", read: 0, result: "失败" },
+    ],
+    run: { status: "部分失败", sourceCount: 18, succeededSources: 17 },
+  };
+  const { accepted, warnings } = evaluateSnapshot(next, { projects: [{ url: "https://fixture.test/notice/1" }] });
+  assert.equal(accepted, true);
+  assert.deepEqual(warnings, ["焦作市公共资源交易中心 本轮读到 0 条，请人工核对列表页"]);
 });
