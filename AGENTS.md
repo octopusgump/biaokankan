@@ -37,7 +37,7 @@
 - 一个窗口只能使用一个独立分支；不同窗口不得共用同一个分支名。
 - 一个分支只处理一个功能或问题。若任务范围发生实质变化，应新建分支，不得继续向原分支混入无关修改。
 - `publish/main-20260820` 是集成发布分支，不使用上述功能前缀，也不得作为日常开发分支。
-- `feature/claude-*` 由 Claude Code 独占，`feature/codex-*` 由 Codex 独占。任一方不得 push、rebase、force push、改写或删除对方分支。
+- `<类型>/claude-*` 由 Claude Code 独占，`<类型>/codex-*` 由 Codex 独占（归属由 `claude` / `codex` 标识决定，与前缀类型无关，例如 `fix/claude-*`、`docs/codex-*` 同样适用）。任一方不得 push、rebase、force push、改写或删除对方分支。
 
 ### 3. 功能窗口
 
@@ -47,6 +47,7 @@
 - 不得切换到、合并或直接提交 `publish/main-20260820`。
 - 不得直接 push `publish/main-20260820`。
 - 未经用户明确要求，不执行 commit 或 push。
+- 例外：仓库所有者可对某个 Agent 的自有独占分支给出**常设 push 授权**，并记录在该 Agent 的入口文件（`AGENTS.md` / `CLAUDE.md`）中。常设授权只覆盖 push 自有独占分支与所有者指定的独立文档仓库，不覆盖 merge、cherry-pick、发布、操作他人分支或任何 force 操作。
 - 获得提交授权后，完成定向测试并创建单一、清晰的 commit。
 - 最终报告必须包含：分支名、测试结果、commit hash、涉及文件和已知限制。
 - `docs/README.md`、`docs/prd/README.md` 等共享索引只由集成窗口修改，功能窗口不得触碰。

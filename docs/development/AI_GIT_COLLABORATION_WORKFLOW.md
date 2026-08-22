@@ -97,6 +97,9 @@ git show origin/main:docs/development/AI_GIT_COLLABORATION_WORKFLOW.md
 5. 只有集成窗口负责接收 Commit、处理集成、运行完整测试和发布。
 6. 不覆盖、暂存、清理或提交其他任务留下的修改。
 7. 未经用户明确授权，不执行 commit、push、合并或发布。
+   仓库所有者可对某个 Agent 的**自有独占分支**给出常设 push 授权，并记录在该 Agent 的入口文件中；
+   常设授权只覆盖 push 自有独占分支与所有者指定的独立文档仓库，**不覆盖** merge、cherry-pick、发布、操作他人分支或任何 force 操作。
+   已生效的常设授权：Claude Code 可 push `<类型>/claude-*` 与 `octopusgump/biaokankan-notes`（记录于 `CLAUDE.md`）。
 8. **Push 即通信。**任何需要另一个 Agent 读取、审核或集成的改动都必须先形成明确 Commit 并 push；未 push 的本地修改对另一个 Agent 等于不存在。
 
 ## 三、角色分工
@@ -129,8 +132,11 @@ git show origin/main:docs/development/AI_GIT_COLLABORATION_WORKFLOW.md
 
 ### Agent 分支归属
 
-- `feature/claude-*` 由 Claude Code 独占；
-- `feature/codex-*` 由 Codex 独占；
+- `<类型>/claude-*` 由 Claude Code 独占；
+- `<类型>/codex-*` 由 Codex 独占；
+- 归属由分支名中的 `claude` / `codex` 标识决定，与类型前缀无关。
+  `fix/claude-duplicate-projects`、`docs/claude-entry-rules`、`chore/codex-pages-build`
+  都受本条保护；不要因为前缀不是 `feature/` 就认为分支无归属；
 - 任一方不得向对方分支 push，不得 rebase、force push、改写或删除对方分支；
 - 需要对方修改时，通过审核意见或新的独立修复 Commit 交接；
 - 最终合并只由用户或用户指定的人工集成窗口执行。
@@ -444,7 +450,7 @@ Codex、Claude Code 和人工都可以提出修改，但不得同时直接编辑
 1. 一个任务对应一个分支、一个 worktree、一个明确写入者；
 2. 不得与 Codex 或其他窗口同时写入同一个 worktree 或分支；
 3. 不得覆盖、暂存、提交、还原、stash 或清理其他任务的修改；
-4. 未经用户明确授权，不执行 commit、push、merge、cherry-pick 或发布；
+4. 未经用户明确授权，不执行 commit、push、merge、cherry-pick 或发布（入口文件中已记录的常设 push 授权除外，其范围仅限自有独占分支）；
 5. 不直接修改或 push 当前集成发布分支；
 6. 不使用 `git reset --hard`、强制 push、`git add .` 或其他扩大修改范围的操作；
 7. 如果工作区不独立、存在不明修改、基线不一致或规则冲突，立即停止写操作并报告；
