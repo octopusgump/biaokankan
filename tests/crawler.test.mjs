@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText, retainProjectWithLatestLinkState } from "../crawler/core.mjs";
+import { collapseDuplicates, deadlinePresentation, extractAnchors, extractProject, isSupervisionText, projectIdentity, retainProjectWithLatestLinkState, supervisionScope, withinRetention } from "../crawler/core.mjs";
 import { buildSummary } from "../crawler/summary.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
 import { classifyBidDeadline, documentAcquirePresentation, normalizeProjectTimeFields } from "../shared/project-time.mjs";
@@ -329,16 +329,150 @@ test("extracts and resolves list links deterministically", () => {
   assert.deepEqual(anchors, [{ url: "https://example.test/jzbtxx/81223.jhtml", title: "监理公告", text: "监理公告 2026-08-04" }]);
 });
 
+test("a lot explicitly scoped to other work never passes the supervision gate", () => {
+  const build = (title, body) => extractProject({
+    title,
+    html: `<p>${body}</p><p>招标人：某某单位</p>`,
+    url: `https://www.kfsggzyjyw.cn/jzbqx/${title.length}.jhtml`,
+    publishedAt: "2026-08-17",
+    source,
+  }, new Date("2026-08-21T00:00:00+08:00"));
+
+  assert.equal(build("某某项目EPC总承包及监理（第一标段：EPC总承包）招标公告", "招标范围：设计、采购、施工。"), null);
+
+  const supervision = build("某某项目EPC总承包及监理（第二标段：监理）招标公告", "招标范围：施工阶段监理服务。");
+  assert.ok(supervision);
+  assert.equal(supervision.supervisionConfidence, "explicit");
+  assert.ok(!supervision.pendingFields?.includes("监理标段范围"));
+
+  // 正文只写了"标段划分里有一个监理标段"，无法证明本条就是那个标段。
+  const ambiguous = build("某某光伏项目第一标段招标公告", "标段划分：本项目共三个标段，其中工程总承包一个标段、监理一个标段。");
+  assert.ok(ambiguous);
+  assert.equal(ambiguous.supervisionConfidence, "loose");
+  assert.equal(ambiguous.ambiguousSection, true);
+  assert.ok(ambiguous.pendingFields.includes("监理标段范围"));
+});
+
+test("the supervision gate never drops a monitoring notice on body text alone", () => {
+  // 监理公告的招标范围经常在描述"被监理的施工内容"，不能据此排除。
+  const scope = supervisionScope(
+    "原阳县雨污水管网及污水提升泵站新建工程1标段、2标段、3标段",
+    "[公开招标] [监理] 招标范围： 1标段：工程量清单及施工图纸所含的全部施工工作内容；",
+  );
+  assert.equal(scope.included, true);
+  assert.equal(scope.confidence, "loose");
+});
+
+test("announcements of the same project collapse into one row", () => {
+  const lot = (section, url, extra = {}) => ({
+    name: "杞县铝型材产业基地标准化厂房 20MWP 屋顶分布式光伏项目",
+    section,
+    originalTitle: `杞县铝型材产业基地标准化厂房20MWP屋顶分布式光伏项目${section}招标公告`,
+    tenderNumber: "HNGKZB-2026-056",
+    supervisionConfidence: "loose",
+    ambiguousSection: true,
+    publishedAt: "2026-08-17 00:00",
+    url,
+    ...extra,
+  });
+  const collapsed = collapseDuplicates([
+    lot("第一标段", "https://www.kfsggzyjyw.cn/jzbqx/81932.jhtml"),
+    lot("第二标段", "https://www.kfsggzyjyw.cn/jzbqx/81933.jhtml"),
+    lot("第三标段", "https://www.kfsggzyjyw.cn/jzbqx/81934.jhtml"),
+  ], new Date("2026-08-21T00:00:00+08:00"));
+
+  assert.equal(collapsed.length, 1);
+  assert.equal(collapsed[0].section, "标段待核验");
+  assert.equal(collapsed[0].relatedAnnouncements.length, 2);
+  assert.equal(collapsed[0].related.type, "同项目多标段");
+
+  // 已确认的监理标段存在时，其余标段不再单独占一行。
+  const withConfirmed = collapseDuplicates([
+    lot("第一标段", "https://www.kfsggzyjyw.cn/jzbqx/81932.jhtml"),
+    lot("第二标段", "https://www.kfsggzyjyw.cn/jzbqx/81933.jhtml", { supervisionConfidence: "explicit", ambiguousSection: false }),
+  ], new Date("2026-08-21T00:00:00+08:00"));
+  assert.equal(withConfirmed.length, 1);
+  assert.equal(withConfirmed[0].section, "第二标段");
+  assert.equal(withConfirmed[0].related.type, "同项目其他标段");
+});
+
+test("a re-tendered lot keeps the newest announcement and links the earlier one", () => {
+  const announcement = (url, publishedAt) => ({
+    name: "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目",
+    section: "监理标段",
+    originalTitle: "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目招标公告",
+    tenderNumber: "豫财招标采购-2026-866",
+    supervisionConfidence: "explicit",
+    ambiguousSection: false,
+    publishedAt,
+    url,
+  });
+  const collapsed = collapseDuplicates([
+    announcement("https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260722/first.html", "2026-07-22 09:53"),
+    announcement("https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260814/second.html", "2026-08-14 11:28"),
+  ], new Date("2026-08-21T00:00:00+08:00"));
+
+  assert.equal(collapsed.length, 1);
+  assert.match(collapsed[0].url, /second\.html$/);
+  assert.equal(collapsed[0].related.type, "二次招标");
+  assert.equal(collapsed[0].relatedAnnouncements.length, 1);
+});
+
+test("field capture stops at the next label instead of truncating mid-word", () => {
+  const build = (body) => extractProject({
+    title: "某某工程监理标段招标公告",
+    html: body,
+    url: "https://www.kfsggzyjyw.cn/jzbqx/70001.jhtml",
+    publishedAt: "2026-08-17",
+    source,
+  }, new Date("2026-08-21T00:00:00+08:00"));
+
+  const numbered = build("<p>（ 1 ）项目名称：浉河区林下中草药经济建设项目 EPC 总承包及监理 （ 2 ）招标编号： A3205820001002866 （ 3 ）建设地点：河南省信阳市。</p>");
+  assert.equal(numbered.name, "浉河区林下中草药经济建设项目 EPC 总承包及监理");
+
+  const listed = build("<p>招标人：卢氏县宏图实业有限公司 2 . 项目名称： 卢氏县老灌河上游历史遗留废渣综合整治 EPC项目监理</p>");
+  assert.equal(listed.client, "卢氏县宏图实业有限公司");
+
+  // 找不到字段边界的超长值必须落到"待核验"，不能返回半个词。
+  const runaway = build(`<p>招标人：${"某某单位与".repeat(30)}</p>`);
+  assert.equal(runaway.client, "待核验");
+  assert.ok(runaway.pendingFields.includes("招标人"));
+});
+
+test("projects need a computable age to stay in the snapshot", () => {
+  const now = new Date("2026-08-21T00:00:00+08:00");
+  assert.equal(withinRetention({ publishedAt: "2026-08-01 09:00", discoveredAt: "2026-08-01 09:00" }, 90, now), true);
+  assert.equal(withinRetention({ publishedAt: "2026-01-01 09:00", discoveredAt: "2026-01-01 09:00" }, 90, now), false);
+  // 发布时间识别不出来时，用首次发现时间兜底，而不是永久保留。
+  assert.equal(withinRetention({ publishedAt: "待核验", discoveredAt: "2026-08-20 07:30" }, 90, now), true);
+  assert.equal(withinRetention({ publishedAt: "待核验", discoveredAt: "待核验" }, 90, now), false);
+});
+
+test("an unreadable announcement date is reported instead of silently accepted", () => {
+  const project = extractProject({
+    title: "某某工程监理标段招标公告",
+    html: "<p>招标范围：施工阶段监理服务。</p><p>招标人：某某单位</p>",
+    url: "https://www.kfsggzyjyw.cn/jzbqx/70002.jhtml",
+    publishedAt: "",
+    source,
+  }, new Date("2026-08-21T00:00:00+08:00"));
+  assert.equal(project.publishedAt, "待核验");
+  assert.ok(project.pendingFields.includes("公告发布时间"));
+});
+
 test("published snapshot stays live, source-bound and link-unique", async () => {
   const snapshot = JSON.parse(await readFile(new URL("../public/data/radar.json", import.meta.url), "utf8"));
   const configured = new Map(SOURCE_DEFINITIONS.map((source) => [source.name, new URL(source.entry).hostname.replace(/^www\./, "")]));
   assert.equal(snapshot.mode, "live");
   assert.deepEqual(snapshot.sources.map((source) => source.name), SOURCE_DEFINITIONS.map((source) => source.name));
   assert.equal(new Set(snapshot.projects.map((project) => project.originalUrl)).size, snapshot.projects.length);
+  assert.equal(new Set(snapshot.projects.map(projectIdentity)).size, snapshot.projects.length, "同一项目编号与标段只能出现一次");
   assert.equal(snapshot.projects.some((project) => /政府采购网|河南兴达/.test(project.source)), false);
   for (const project of snapshot.projects) {
     assert.equal(new URL(project.originalUrl).hostname.replace(/^www\./, ""), configured.get(project.source));
-    assert.match(`${project.section} ${project.category}`, /监理/);
+    const scope = supervisionScope(project.originalTitle, project.summary);
+    assert.ok(scope.included || scope.confidence !== "explicit", `${project.originalTitle} 的标题已写明本标段不是监理标段`);
+    assert.ok(["explicit", "scoped", "loose"].includes(project.supervisionConfidence), project.originalTitle);
     assert.ok(["confirmed", "document_required", "pending"].includes(project.bidDeadlineStatus));
     assert.equal(project.deadline, project.bidDeadline);
     assert.ok(Object.hasOwn(project, "bidDeadlineEvidence"));

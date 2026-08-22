@@ -1,4 +1,4 @@
-import { chinaDateKey, deadlinePresentation, formatChinaTime, projectFingerprint, retainProjectWithLatestLinkState } from "./core.mjs";
+import { chinaDateKey, collapseDuplicates, deadlinePresentation, formatChinaTime, projectFingerprint, retainProjectWithLatestLinkState, withinRetention } from "./core.mjs";
 import { scanSource, SOURCE_DEFINITIONS } from "./sources.mjs";
 import { createSnapshotStore } from "./storage.mjs";
 import { buildSummary } from "./summary.mjs";
@@ -8,6 +8,7 @@ const store = createSnapshotStore();
 const previous = await store.load();
 const previousByUrl = new Map(previous.projects.map((project) => [project.url, project]));
 const today = chinaDateKey(started);
+const RETENTION_DAYS = Number(process.env.TENDER_RETENTION_DAYS || 90);
 const configuredNames = new Set(SOURCE_DEFINITIONS.map((source) => source.name));
 
 const settled = await Promise.allSettled(SOURCE_DEFINITIONS.map((source) => scanSource(source, started)));
@@ -36,6 +37,18 @@ settled.forEach((result, index) => {
           action: "人工核对项目与原公告",
         });
       } else {
+        if (project.publishedAt === "待核验") {
+          currentErrors.push({
+            id: `${source.key}-published-${project.id}-${started.getTime()}`,
+            level: "字段核验失败",
+            source: source.name,
+            project: project.name,
+            url: project.url,
+            time: formatChinaTime(started).slice(0, 16),
+            detail: "公告发布时间无法识别，该项目按首次发现时间计算保留期",
+            action: "人工核对原公告发布日期",
+          });
+        }
         freshProjects.push(project);
       }
     }
@@ -121,8 +134,9 @@ const retainedFromFailedSources = previous.projects
   .filter((project) => configuredNames.has(project.source) && (!successfulNames.has(project.source) || partialNames.has(project.source)))
   .map((project) => retainProjectWithLatestLinkState(project, sources.find((source) => source.name === project.source)));
 const finished = new Date();
-const projects = [...mergedFresh, ...retainedFromFailedSources]
+const projects = collapseDuplicates([...mergedFresh, ...retainedFromFailedSources]
   .filter((project, index, all) => all.findIndex((item) => item.url === project.url) === index)
+  .filter((project) => withinRetention(project, RETENTION_DAYS, started)), started)
   .map((project) => ({
     ...project,
     deadline: project.bidDeadline,
