@@ -52,7 +52,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": null,
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "监理标段",
+      "ambiguousSection": false
     },
     {
       "id": 859262887,
@@ -98,7 +102,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": null,
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "监理标段",
+      "ambiguousSection": false
     },
     {
       "id": 1463723223,
@@ -140,7 +148,11 @@
       ],
       "fingerprint": "f02fae9dfa86fe5d892200553a6b9fb6fdc6ef89728ec1300de183417cea4568",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "监理标段",
+      "ambiguousSection": false
     },
     {
       "id": 1577501919,
@@ -181,7 +193,11 @@
       ],
       "fingerprint": "c7407bdc01b670537bd285dc7347702f39d3296cbf3091596cf668b40bac3f01",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "洛直工服招标(2026)0018号",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 625871816,
@@ -222,7 +238,11 @@
       ],
       "fingerprint": "fb3e5c58df119250a82f3063759f669b11ac56fd37168fd7fb9aa4d94f896c27",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 349818314,
@@ -263,7 +283,11 @@
       ],
       "fingerprint": "ecacd553304eccb77f9da1af0303f347773d1a835ae1858c1f98942fb8575501",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 452595278,
@@ -309,7 +333,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": null,
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "监理标段",
+      "ambiguousSection": false
     },
     {
       "id": 122979257,
@@ -350,7 +378,11 @@
       ],
       "fingerprint": "01f74259d3219a2ba150b459e6126e48e7f931869ce613e31fe0ce491c969474",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "HKG-JS-202607006",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1125027588,
@@ -391,7 +423,11 @@
       ],
       "fingerprint": "e633da0ab2e67dcbef92f95bbcc9ea5ba799b607db261091f6d2fe81850cdf1c",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1594859679,
@@ -432,7 +468,11 @@
       ],
       "fingerprint": "ca6160b138ad9bc78e1653d56ba7bb81b6e140c6837849dd64dfa7f37bff64c0",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1575591213,
@@ -470,7 +510,11 @@
       "createdToday": true,
       "fingerprint": "a22cbbeb85670d73c94b31e7b9d9562f7c5034ad3c46b0c0510d80a6ce929ecb",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1209654226,
@@ -512,7 +556,11 @@
       ],
       "fingerprint": "77974f36dd53af2d3d9fad59c121a32fbe67e471d4aebbe879b5945e281f290d",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "26-新密GC-0007",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 363922895,
@@ -550,7 +598,11 @@
       "createdToday": true,
       "fingerprint": "23dcf7558fbd656084b1efee70ae1b5e29815d6f15205c1cd833f4338a02d89f",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "JSGC-",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1980675637,
@@ -591,48 +643,69 @@
       ],
       "fingerprint": "081e70649b91e19ffc2bb16a84c5dfe35773c66cc2d1b9de7d0de934ba60e764",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "scoped",
+      "supervisionEvidence": "招标范围：自工程施工准备阶段、施工阶段、竣工验收阶段、保修期阶段的全过程监理",
+      "ambiguousSection": false
     },
     {
-      "id": 1188096971,
+      "id": 1381276147,
       "name": "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目",
       "section": "监理标段",
       "category": "市政工程监理",
       "investment": "待核验",
-      "bidDeadline": "2026-08-12 09:00",
+      "bidDeadline": "2026-09-07 09:00",
       "bidDeadlineStatus": "confirmed",
-      "bidDeadlineEvidence": "5.投标文件的递交 5.1投标文件递交截止时间（ 开标 时间）： 2026 年 8 月 12 日 09 时 00 分。",
-      "documentAcquireStart": "2026-07-23 00:00",
-      "documentAcquireDeadline": "2026-07-29 23:59",
+      "bidDeadlineEvidence": "5.投标文件的递交 5.1投标文件递交截止时间（ 开标 时间）： 2026 年 9 月 7 日 09 时 00 分。",
+      "documentAcquireStart": "2026-08-17 00:00",
+      "documentAcquireDeadline": "2026-08-21 23:59",
       "bidDeadlineVerifiedAt": "2026-08-21 16:13",
-      "deadline": "2026-08-12 09:00",
-      "deadlineShort": "08月12日 09:00",
-      "remaining": "已截止",
-      "deadlineState": "expired",
+      "deadline": "2026-09-07 09:00",
+      "deadlineShort": "09月07日 09:00",
+      "remaining": "剩余 17 天",
+      "deadlineState": "normal",
       "client": "郑州航空工业管理学院",
       "agency": "高达建设管理发展有限责任公司",
       "source": "河南省公共资源交易中心",
       "sourceType": "公共资源交易中心",
-      "url": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260722/925f312b-b865-4fb3-b0f9-0be385e15348.html",
-      "originalUrl": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260722/925f312b-b865-4fb3-b0f9-0be385e15348.html",
+      "url": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260814/606a753e-eb71-40cc-b6b7-baa022dcc76f.html",
+      "originalUrl": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260814/606a753e-eb71-40cc-b6b7-baa022dcc76f.html",
       "listUrl": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/transaction_notice.html",
       "homeUrl": "https://hnsggzyjy.henan.gov.cn/",
       "linkStatus": "available",
       "lastVerifiedAt": "2026-08-21 16:13",
       "linkFailureReason": null,
       "region": "河南省",
-      "originalTitle": "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目招标公告",
-      "publishedAt": "2026-07-22 09:53",
+      "originalTitle": "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目（二次）招标公告",
+      "publishedAt": "2026-08-14 11:28",
       "discoveredAt": "2026-08-20 13:32",
       "updatedAt": "2026-08-21 13:23",
-      "summary": "项目概况与招标范围 2.1 项目名称：郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目 2.2 招标编号：豫财招标采购-2026-866 2.3 建设地点：郑州市航空港区八岗办事处前吕村、庙后村、张堂村。 2.4 建设规模：郑州航空工业管理学院航空港校区一期建设工程总占地面积约800亩。本次招标内容包含一期建设工程的室外道路及铺装、室外给排水管网、室外电气管网及照明、室外土方工程、供配电工程、围墙等施工监理服务。 2.5 招标范围：郑州航空工业管理学院航空港校区一期建设工程室外配套施工的施工阶段、竣工",
+      "summary": "项目概况与招标范围 2.1 项目名称：郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目（二次） 2.2 招标编号：豫财招标采购-2026-866 2.3 建设地点：郑州市航空港区八岗办事处前吕村、庙后村、张堂村。 2.4 建设规模：郑州航空工业管理学院航空港校区一期建设工程总占地面积约800亩。本次招标内容包含一期建设工程的室外道路及铺装、室外给排水管网、室外电气管网及照明、室外土方工程、供配电工程、围墙等施工监理服务。 2.5 招标范围：郑州航空工业管理学院航空港校区一期建设工程室外配套施工的施工阶",
       "createdToday": false,
       "pendingFields": [
         "总投资"
       ],
-      "fingerprint": "37a98e3cd097d254cb4f5e0531ca516931577b9e1bed55ecc0f222e8ae9b254a",
+      "fingerprint": "acb896195164fb20415aaea953da25894b59fbba9b8371f0ce92ca83a184212d",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "豫财招标采购-2026-866",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false,
+      "related": {
+        "type": "二次招标",
+        "title": "该标段此前已发布过招标公告，本条为最新一次（另有 1 条历史公告）",
+        "date": "2026-08-21 16:13"
+      },
+      "relatedAnnouncements": [
+        {
+          "title": "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目招标公告",
+          "section": "监理标段",
+          "publishedAt": "2026-07-22 09:53",
+          "url": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260722/925f312b-b865-4fb3-b0f9-0be385e15348.html"
+        }
+      ]
     },
     {
       "id": 494109396,
@@ -670,7 +743,11 @@
       "createdToday": true,
       "fingerprint": "dac47a1e087bf9257226e7a68a64269b0e4bbf98cc950b1ecd167090975de1f1",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "Y2026GZ0",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1225532263,
@@ -711,7 +788,11 @@
       ],
       "fingerprint": "75006c38deffff642a1242131111c156ee8a9e3a9c6bfba944254506a6fcc519",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "O4113011301000028",
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "（监理）",
+      "ambiguousSection": false
     },
     {
       "id": 75399644,
@@ -752,7 +833,11 @@
       ],
       "fingerprint": "a882e74db3df91b84fda465d6e172854770aece56c4636c527b18190c76d15d2",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "HKG-JS-202607013",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1806015988,
@@ -794,7 +879,11 @@
       ],
       "fingerprint": "532cb9939c71ca72de14f61b23d88936d3c8c54224a79daa87a5ed6c3446b1ec",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "scoped",
+      "supervisionEvidence": "招标范围：施工准备阶段、工程施工阶段、竣工验收阶段、保修阶段及缺陷责任期阶段的全过程监理服务。 2.6 工期要求 ：随施工工期及工程质量",
+      "ambiguousSection": false
     },
     {
       "id": 754556700,
@@ -835,7 +924,11 @@
       ],
       "fingerprint": "6f3c442f4cdd52d525d04d4cdbe676476cbfbf4e7d8076fec7470d3b802ac97c",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 354565350,
@@ -874,7 +967,11 @@
       "pendingFields": [],
       "fingerprint": "9d88e9ddd96558efd105d2288e3cce9db34c8b2ad7ce3e05820f62caf37695de",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "JSGCGK-2026-011",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true
     },
     {
       "id": 1290604527,
@@ -915,7 +1012,11 @@
       ],
       "fingerprint": "90a93db0bc9c3ccd4372c28efb2c242b2327e721d4dd9180516d549c98e24cf1",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 137020271,
@@ -953,7 +1054,11 @@
       "createdToday": true,
       "fingerprint": "9bac59e616b67ae50153cbfe680176364b2b10177b84f17cdc831838cce0f74f",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1805969813,
@@ -994,7 +1099,11 @@
       ],
       "fingerprint": "ed91fa370cfe5c8d5f905234e5f8e97346751394ff6db734c4615967a483eb89",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 540712657,
@@ -1035,7 +1144,11 @@
       ],
       "fingerprint": "2b4f83d66d16cf90ec89dd4e3e178c46a1fcc4fbf58df9475a76d710431846ee",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 960786988,
@@ -1076,7 +1189,11 @@
       ],
       "fingerprint": "34ea1381abba28f886e40d56a61e36cfa28499c33266945444c0738986d296a7",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "scoped",
+      "supervisionEvidence": "招标范围：施工阶段及保修阶段全过程监理服务。 2.1.4质量标准：符合国家现行规范和标准。 2.1.5监理服务期限：自合同签订之日始，至工程竣工验收备案、保修阶段完成止。 2.2执行的招标投标/政府采购政策： 无 （说明本招标项目执",
+      "ambiguousSection": false
     },
     {
       "id": 1162132016,
@@ -1117,7 +1234,11 @@
       ],
       "fingerprint": "3c0d25d3069f924a8a6a2604a8eb4feaa341cad7f1b7307d1f1349a8458cbaed",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "豫工程20260186001",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 102823879,
@@ -1158,7 +1279,11 @@
       ],
       "fingerprint": "448feb5e05df46736df58b9909911733ea79683b539cf723d6f2ac03a3a89799",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "A32058201000939",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1832552002,
@@ -1199,7 +1324,11 @@
       ],
       "fingerprint": "2fff0101af3c98db26b2069932ca265c2c6668857d8755f249fba41d0ef0ffa4",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 23501289,
@@ -1242,7 +1371,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": null,
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "（监理）",
+      "ambiguousSection": false
     },
     {
       "id": 633942592,
@@ -1280,7 +1413,11 @@
       "createdToday": false,
       "fingerprint": "00bf5e81fdf2a8ce79271932e48d806861e8aceca5d2ca9e209afe334b2f4abb",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "HNKX-2026-003",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true
     },
     {
       "id": 580069475,
@@ -1321,45 +1458,11 @@
       ],
       "fingerprint": "53a9be8d6c2de6d6a4caaf4b8ec45c7cf730e7c482485106f564ace2eef9b423",
       "listAvailable": true,
-      "homeAvailable": null
-    },
-    {
-      "id": 271023576,
-      "name": "浉河区林下中草药经济建设项目 EPC总承包及监理",
-      "section": "第一标段",
-      "category": "房屋建筑监理",
-      "investment": "19,363.06 万元",
-      "bidDeadline": "2026-08-26 09:00",
-      "bidDeadlineStatus": "confirmed",
-      "bidDeadlineEvidence": "五、投标文件的递交 5.1投标文件递交的截止时间： 2026年 08 月 26 日 9时00分 。",
-      "documentAcquireStart": null,
-      "documentAcquireDeadline": null,
-      "bidDeadlineVerifiedAt": "2026-08-21 16:13",
-      "deadline": "2026-08-26 09:00",
-      "deadlineShort": "08月26日 09:00",
-      "remaining": "剩余 5 天",
-      "deadlineState": "normal",
-      "client": "信阳市申禾农业发展有限公司",
-      "agency": "建基工程咨询有限公司",
-      "source": "信阳市公共资源交易中心",
-      "sourceType": "公共资源交易中心",
-      "url": "https://ggzyjy.xinyang.gov.cn/jyxx/002001/002001001/20260803/4ebd94a1-cff5-4491-9c81-7daf20795a83.html",
-      "originalUrl": "https://ggzyjy.xinyang.gov.cn/jyxx/002001/002001001/20260803/4ebd94a1-cff5-4491-9c81-7daf20795a83.html",
-      "listUrl": "https://ggzyjy.xinyang.gov.cn/jyxx/002001/002001001/moreinfo.html",
-      "homeUrl": "https://ggzyjy.xinyang.gov.cn/",
-      "linkStatus": "available",
-      "lastVerifiedAt": "2026-08-21 16:13",
-      "linkFailureReason": null,
-      "region": "河南省 · 信阳市",
-      "originalTitle": "[信阳市] [公开招标] 浉河区林下中草药经济建设项目EPC总承包及监理（第一标段：EPC总承包）招标公告\n[2026-08-03]",
-      "publishedAt": "2026-08-03 00:00",
-      "discoveredAt": "2026-08-21 12:19",
-      "updatedAt": "2026-08-21 13:23",
-      "summary": "项目概况与招标内容 2.1项目名称 ：浉河区林下中草药经济建设项目 EPC总承包及监理 2.2招标编号：A3205820001002866 2.3建设地点： 河南省信阳市浉河区（林下中草药种植基地位于浉河区董家河镇三角山村、白马山村、车云村、黄龙寺村、集云村、塔耳湾村、孔畈村、云雾村等周边，生产厂房位于浉河区东双河镇金安华苑西北侧 260米）。 2.4项目概况：项目主要建设林下种植基地、初加工生产厂房等设施装修，装饰工程：生产厂房13568.00m²，种植管理用房1880.00m²。种植基地：百合种植基地7200.",
-      "createdToday": true,
-      "fingerprint": "36c29415769ca11a38d1c1d52ecdf0daed390f767a8f7fa12e211ecb79e6a81c",
-      "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "新密公开采购",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 550279451,
@@ -1400,7 +1503,11 @@
       ],
       "fingerprint": "a8baf895ad6cf8fea04772be997470c8cf33f262a877d3941d7093aa1f58bc8f",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "A3205820001002866",
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "第二标段：监理",
+      "ambiguousSection": false
     },
     {
       "id": 771546900,
@@ -1441,7 +1548,11 @@
       ],
       "fingerprint": "16809e962fdc5b75a3812be4d1a7676194b8b4cf049879c9d07d3eb3a59b4a55",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 612593402,
@@ -1484,7 +1595,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": "DXZB-KF2026-0701",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true
     },
     {
       "id": 1476038903,
@@ -1525,7 +1640,11 @@
       ],
       "fingerprint": "46b80f71eda29e9228d84ff292e27cac40451cf31169d98a20c3f9842c661b87",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1771884931,
@@ -1566,7 +1685,11 @@
       ],
       "fingerprint": "b5cabbcc2a50886c30738672d40d4fcc7fa9d0f22ceebafded15554face4acd0",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1231612242,
@@ -1609,7 +1732,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": "JSGCGK-2026-012",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true
     },
     {
       "id": 15420394,
@@ -1650,7 +1777,11 @@
       ],
       "fingerprint": "545b5e8691cf9a9c4e7a0774dcc6b13fdbf3c60cc46b7282f612789d913523ff",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "JSGCGK-2026-013",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true
     },
     {
       "id": 1765120,
@@ -1691,7 +1822,11 @@
       ],
       "fingerprint": "33c874f2d224bfbf6ca992c3a7a414aeb64709379e941ec625e2998bb2f6427a",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "26-新密GC-0012",
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "监理标段",
+      "ambiguousSection": false
     },
     {
       "id": 677440831,
@@ -1729,7 +1864,11 @@
       "createdToday": true,
       "fingerprint": "1196f258c1106b7395ae3fbfb75672823f890fa333d90b4d8cdff0d53b3d3ed1",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "HNKX-2026-004",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true
     },
     {
       "id": 1589949755,
@@ -1770,7 +1909,11 @@
       ],
       "fingerprint": "0a941b8d4c111105dbf925e0342744d872436ffa024ed70c7a7ea61e2865d9fd",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "KCZX-2026-005",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 465686656,
@@ -1808,7 +1951,11 @@
       "createdToday": true,
       "fingerprint": "adfacef6d90b156ff30e0d1aae003c5c578cba8dffa1c333f74a654262a175e2",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "JSGC-J-2026036",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1397285096,
@@ -1849,53 +1996,16 @@
       ],
       "fingerprint": "8da85016e6307e36febcf7af5253966f3ae37c6b97dd39d37f133a874000255c",
       "listAvailable": true,
-      "homeAvailable": null
-    },
-    {
-      "id": 1381276147,
-      "name": "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目",
-      "section": "监理标段",
-      "category": "市政工程监理",
-      "investment": "待核验",
-      "bidDeadline": "2026-09-07 09:00",
-      "bidDeadlineStatus": "confirmed",
-      "bidDeadlineEvidence": "5.投标文件的递交 5.1投标文件递交截止时间（ 开标 时间）： 2026 年 9 月 7 日 09 时 00 分。",
-      "documentAcquireStart": "2026-08-17 00:00",
-      "documentAcquireDeadline": "2026-08-21 23:59",
-      "bidDeadlineVerifiedAt": "2026-08-21 16:13",
-      "deadline": "2026-09-07 09:00",
-      "deadlineShort": "09月07日 09:00",
-      "remaining": "剩余 17 天",
-      "deadlineState": "normal",
-      "client": "郑州航空工业管理学院",
-      "agency": "高达建设管理发展有限责任公司",
-      "source": "河南省公共资源交易中心",
-      "sourceType": "公共资源交易中心",
-      "url": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260814/606a753e-eb71-40cc-b6b7-baa022dcc76f.html",
-      "originalUrl": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260814/606a753e-eb71-40cc-b6b7-baa022dcc76f.html",
-      "listUrl": "https://hnsggzyjy.henan.gov.cn/jyxx/002001/transaction_notice.html",
-      "homeUrl": "https://hnsggzyjy.henan.gov.cn/",
-      "linkStatus": "available",
-      "lastVerifiedAt": "2026-08-21 16:13",
-      "linkFailureReason": null,
-      "region": "河南省",
-      "originalTitle": "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目（二次）招标公告",
-      "publishedAt": "2026-08-14 11:28",
-      "discoveredAt": "2026-08-20 13:32",
-      "updatedAt": "2026-08-21 13:23",
-      "summary": "项目概况与招标范围 2.1 项目名称：郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目（二次） 2.2 招标编号：豫财招标采购-2026-866 2.3 建设地点：郑州市航空港区八岗办事处前吕村、庙后村、张堂村。 2.4 建设规模：郑州航空工业管理学院航空港校区一期建设工程总占地面积约800亩。本次招标内容包含一期建设工程的室外道路及铺装、室外给排水管网、室外电气管网及照明、室外土方工程、供配电工程、围墙等施工监理服务。 2.5 招标范围：郑州航空工业管理学院航空港校区一期建设工程室外配套施工的施工阶",
-      "createdToday": false,
-      "pendingFields": [
-        "总投资"
-      ],
-      "fingerprint": "acb896195164fb20415aaea953da25894b59fbba9b8371f0ce92ca83a184212d",
-      "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 167355998,
       "name": "杞县铝型材产业基地标准化厂房 20MWP 屋顶分布式光伏项目",
-      "section": "第一标段",
+      "section": "标段待核验",
       "category": "市政工程监理",
       "investment": "6,483.53 万元",
       "bidDeadline": "2026-09-07 10:00",
@@ -1933,93 +2043,25 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
-    },
-    {
-      "id": 188479502,
-      "name": "杞县铝型材产业基地标准化厂房 20MWP 屋顶分布式光伏项目",
-      "section": "第三标段",
-      "category": "房屋建筑监理",
-      "investment": "6,483.53 万元",
-      "bidDeadline": "2026-09-07 10:00",
-      "bidDeadlineStatus": "confirmed",
-      "bidDeadlineEvidence": "5. 投标文件的递交 5.1 投标文件的递交截止时间（投标截止时间，下同）： 2026 年 9 月 7 日 10 时 00 分（北京时间） 5.2 投标文件的递交方式：电子投标文件须在投标截止时间前在开封市公共资源交易中心网站会员系统加密上传。",
-      "documentAcquireStart": null,
-      "documentAcquireDeadline": null,
-      "bidDeadlineVerifiedAt": "2026-08-21 16:13",
-      "deadline": "2026-09-07 10:00",
-      "deadlineShort": "09月07日 10:00",
-      "remaining": "剩余 17 天",
-      "deadlineState": "normal",
-      "client": "河南省杞能新能源开发有限公司",
-      "agency": "河南省国控招标有限公司",
-      "source": "开封市公共资源交易中心",
-      "sourceType": "公共资源交易中心",
-      "url": "https://www.kfsggzyjyw.cn/jzbqx/81934.jhtml",
-      "originalUrl": "https://www.kfsggzyjyw.cn/jzbqx/81934.jhtml",
-      "listUrl": "https://www.kfsggzyjyw.cn/jzbgg/index.jhtml",
-      "homeUrl": "https://www.kfsggzyjyw.cn/",
-      "linkStatus": "available",
-      "lastVerifiedAt": "2026-08-21 16:13",
-      "linkFailureReason": null,
-      "region": "河南省 · 开封市",
-      "originalTitle": "杞县铝型材产业基地标准化厂房20MWP屋顶分布式光伏项目第三标段招标公告",
-      "publishedAt": "2026-08-17 00:00",
-      "discoveredAt": "2026-08-21 12:23",
-      "updatedAt": "2026-08-21 16:13",
-      "summary": "项目概况与招标范围 2.1 项目名称：杞县铝型材产业基地标准化厂房 20MWP 屋顶分布式光伏项目 2.2 项目编号： HNGKZB-2026-056 2.3 资金来源和落实情况：自筹资金，已落实 2.4 总投资额度：约 8000 万元（其中建安费约： 6483.53 万元） 2.5 建设规模与内容：项目位于开封市杞县葛岗镇（铝型材产业园内），项目总建设容量约 20MWp ，主要包含光伏设备、变压器、储能等设备，配建充电桩、停车场（含车棚）等设施。 2.6 标段划分：本项目共三个标段，其中工程总承包一个标段、监理一",
-      "createdToday": true,
-      "fingerprint": "962d0ee3dfe5d633f8c75faefb35087d9ac0ae9826a808a3978ccb72aad1f960",
-      "listAvailable": true,
-      "homeAvailable": null,
-      "related": {
-        "type": "内容更新",
-        "title": "原公告正文或关键字段发生变化",
-        "date": "2026-08-21 16:13"
-      }
-    },
-    {
-      "id": 356004073,
-      "name": "杞县铝型材产业基地标准化厂房 20MWP 屋顶分布式光伏项目",
-      "section": "第二标段",
-      "category": "房屋建筑监理",
-      "investment": "6,483.53 万元",
-      "bidDeadline": "2026-09-07 10:00",
-      "bidDeadlineStatus": "confirmed",
-      "bidDeadlineEvidence": "5. 投标文件的递交 5.1 投标文件的递交截止时间（投标截止时间，下同）： 2026 年 9 月 7 日 10 时 00 分（北京时间） 5.2 投标文件的递交方式：电子投标文件须在投标截止时间前在开封市公共资源交易中心网站会员系统加密上传。",
-      "documentAcquireStart": null,
-      "documentAcquireDeadline": null,
-      "bidDeadlineVerifiedAt": "2026-08-21 16:13",
-      "deadline": "2026-09-07 10:00",
-      "deadlineShort": "09月07日 10:00",
-      "remaining": "剩余 17 天",
-      "deadlineState": "normal",
-      "client": "河南省杞能新能源开发有限公司",
-      "agency": "河南省国控招标有限公司",
-      "source": "开封市公共资源交易中心",
-      "sourceType": "公共资源交易中心",
-      "url": "https://www.kfsggzyjyw.cn/jzbqx/81933.jhtml",
-      "originalUrl": "https://www.kfsggzyjyw.cn/jzbqx/81933.jhtml",
-      "listUrl": "https://www.kfsggzyjyw.cn/jzbgg/index.jhtml",
-      "homeUrl": "https://www.kfsggzyjyw.cn/",
-      "linkStatus": "available",
-      "lastVerifiedAt": "2026-08-21 16:13",
-      "linkFailureReason": null,
-      "region": "河南省 · 开封市",
-      "originalTitle": "杞县铝型材产业基地标准化厂房20MWP屋顶分布式光伏项目第二标段招标公告",
-      "publishedAt": "2026-08-17 00:00",
-      "discoveredAt": "2026-08-21 12:23",
-      "updatedAt": "2026-08-21 16:13",
-      "summary": "项目概况与招标范围 2.1 项目名称：杞县铝型材产业基地标准化厂房 20MWP 屋顶分布式光伏项目 2.2 项目编号： HNGKZB-2026-056 2.3 资金来源和落实情况：自筹资金，已落实 2.4 总投资额度：约 8000 万元（其中建安费约： 6483.53 万元） 2.5 建设规模与内容：项目位于开封市杞县葛岗镇（铝型材产业园内），项目总建设容量约 20MWp ，主要包含光伏设备、变压器、储能等设备，配建充电桩、停车场（含车棚）等设施。 2.6 标段划分：本项目共三个标段，其中工程总承包一个标段、监理一",
-      "createdToday": true,
-      "fingerprint": "d1f623d1c5b9191641edc059b74c05eeaf2317940abd97715d1504c64483c122",
-      "listAvailable": true,
-      "homeAvailable": null,
-      "related": {
-        "type": "内容更新",
-        "title": "原公告正文或关键字段发生变化",
-        "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": "HNGKZB-2026-056",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true,
+      "relatedAnnouncements": [
+        {
+          "title": "杞县铝型材产业基地标准化厂房20MWP屋顶分布式光伏项目第三标段招标公告",
+          "section": "第三标段",
+          "publishedAt": "2026-08-17 00:00",
+          "url": "https://www.kfsggzyjyw.cn/jzbqx/81934.jhtml"
+        },
+        {
+          "title": "杞县铝型材产业基地标准化厂房20MWP屋顶分布式光伏项目第二标段招标公告",
+          "section": "第二标段",
+          "publishedAt": "2026-08-17 00:00",
+          "url": "https://www.kfsggzyjyw.cn/jzbqx/81933.jhtml"
+        }
+      ]
     },
     {
       "id": 171571722,
@@ -2060,7 +2102,11 @@
       ],
       "fingerprint": "1ad052b31fe8199530892f8957311c7b6a4616c9fd68328dae3d34f87058f5cb",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "YXXM-2026-00230",
+      "supervisionConfidence": "scoped",
+      "supervisionEvidence": "招标范围： 三标段：本项目一标段（开封市卫生学校市域智慧医学虚拟仿真实训基地项目 -- 装修工程）和二标段（开封市卫生学校市域智慧医学虚拟仿真实训基地项目 -- 功能规划）施工（货物安装）阶段、保修期（含缺陷责任期）及设备质保期阶段全过程监理服务； 2.6 本次招标预算总金额： ",
+      "ambiguousSection": false
     },
     {
       "id": 510490406,
@@ -2101,12 +2147,16 @@
       ],
       "fingerprint": "74fc52bde1fccf78663f28cd7ab4588d731bd7f318b357f3596ee4e42a9bb62d",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 935706651,
       "name": "郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理",
-      "section": "第二标段",
+      "section": "标段待核验",
       "category": "水利工程监理",
       "investment": "待核验",
       "bidDeadline": "2026-09-09 09:00",
@@ -2142,89 +2192,30 @@
       ],
       "fingerprint": "072b257ffed565b54b3aebfffff058a43061e8d55a84b5e941ec0d9f018e8564",
       "listAvailable": true,
-      "homeAvailable": null
-    },
-    {
-      "id": 1666547600,
-      "name": "郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理",
-      "section": "第三标段",
-      "category": "水利工程监理",
-      "investment": "待核验",
-      "bidDeadline": "2026-09-09 09:00",
-      "bidDeadlineStatus": "confirmed",
-      "bidDeadlineEvidence": "五、投标截止时间及地点 5.1 、时间：2026年09月09日9时00分（北京时间）；",
-      "documentAcquireStart": "2026-08-19 00:00",
-      "documentAcquireDeadline": "2026-09-08 00:00",
-      "bidDeadlineVerifiedAt": "2026-08-21 16:13",
-      "deadline": "2026-09-09 09:00",
-      "deadlineShort": "09月09日 09:00",
-      "remaining": "剩余 19 天",
-      "deadlineState": "normal",
-      "client": "河南绿水源产业发展有限公司",
-      "agency": "河南瑞之华工程管理有限公司",
-      "source": "平顶山市公共资源交易中心",
-      "sourceType": "公共资源交易中心",
-      "url": "http://ggzy.pds.gov.cn/jszbpdss/96847.jhtml",
-      "originalUrl": "http://ggzy.pds.gov.cn/jszbpdss/96847.jhtml",
-      "listUrl": "http://ggzy.pds.gov.cn/gjsgc/index.jhtml",
-      "homeUrl": "http://ggzy.pds.gov.cn/",
-      "linkStatus": "available",
-      "lastVerifiedAt": "2026-08-21 16:13",
-      "linkFailureReason": null,
-      "region": "河南省 · 平顶山市",
-      "originalTitle": "【平公资建2026129号】郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理（第三标段）-招标公告",
-      "publishedAt": "待核验",
-      "discoveredAt": "2026-08-21 12:19",
-      "updatedAt": "2026-08-21 13:23",
-      "summary": "项目概况 2.1 项目名称：郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理 2.2 项目编号：RZHZB-202622 2.3 招标方式：公开招标 2.4 投资预算：本项目暂估工程费用约24167.04万元。 2.5 建设地点：平顶山市郏县 2.6 工程概况： 该项目1.新建水产业融合发展示范园，用地面积33386.00㎡（约50.079亩），总建筑面积31766㎡，其中改建后仓库建筑面积4562㎡，2栋厂房合计建筑面积25589㎡，配套公共设施合计建筑面积为1615㎡，并采购安装自动化灌装水生产线，另配套",
-      "createdToday": true,
-      "pendingFields": [
-        "总投资"
-      ],
-      "fingerprint": "3791b1eafd2ecc397965cb2096ae291941e6828e9ea626f85b441c8e02a6949e",
-      "listAvailable": true,
-      "homeAvailable": null
-    },
-    {
-      "id": 1332604307,
-      "name": "郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理",
-      "section": "第一标段",
-      "category": "房屋建筑监理",
-      "investment": "待核验",
-      "bidDeadline": "2026-09-09 09:00",
-      "bidDeadlineStatus": "confirmed",
-      "bidDeadlineEvidence": "五、投标截止时间及地点 5.1 、时间：2026年09月09日9时00分（北京时间）；",
-      "documentAcquireStart": "2026-08-19 00:00",
-      "documentAcquireDeadline": "2026-09-08 00:00",
-      "bidDeadlineVerifiedAt": "2026-08-21 16:13",
-      "deadline": "2026-09-09 09:00",
-      "deadlineShort": "09月09日 09:00",
-      "remaining": "剩余 19 天",
-      "deadlineState": "normal",
-      "client": "河南绿水源产业发展有限公司",
-      "agency": "河南瑞之华工程管理有限公司",
-      "source": "平顶山市公共资源交易中心",
-      "sourceType": "公共资源交易中心",
-      "url": "http://ggzy.pds.gov.cn/jszbpdss/96846.jhtml",
-      "originalUrl": "http://ggzy.pds.gov.cn/jszbpdss/96846.jhtml",
-      "listUrl": "http://ggzy.pds.gov.cn/gjsgc/index.jhtml",
-      "homeUrl": "http://ggzy.pds.gov.cn/",
-      "linkStatus": "available",
-      "lastVerifiedAt": "2026-08-21 16:13",
-      "linkFailureReason": null,
-      "region": "河南省 · 平顶山市",
-      "originalTitle": "【平公资建2026129号】郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理（第一标段）-招标公告",
-      "publishedAt": "待核验",
-      "discoveredAt": "2026-08-21 12:19",
-      "updatedAt": "2026-08-21 13:23",
-      "summary": "项目概况 2.1 项目名称：郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理 2.2 项目编号：RZHZB-202622 2.3 招标方式：公开招标 2.4 投资预算：本项目暂估工程费用约24167.04万元。 2.5 建设地点：平顶山市郏县 2.6 工程概况： 该项目新建水产业融合发展示范园，用地面积33386.00㎡（约50.079亩），总建筑面积31766㎡，其中改建后仓库建筑面积4562㎡，2栋厂房合计建筑面积25589㎡，配套公共设施合计建筑面积为1615㎡，并采购安装自动化灌装水生产线，另配套建设",
-      "createdToday": true,
-      "pendingFields": [
-        "总投资"
-      ],
-      "fingerprint": "3a827cf943e3f06077872aaf224ebca08e2900b3fc655321bca6f8aeb8b27b0e",
-      "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "RZHZB-202622",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true,
+      "related": {
+        "type": "同项目多标段",
+        "title": "该项目共 3 条标段公告，尚未确认哪一个是监理标段",
+        "date": "2026-08-21 16:13"
+      },
+      "relatedAnnouncements": [
+        {
+          "title": "【平公资建2026129号】郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理（第三标段）-招标公告",
+          "section": "第三标段",
+          "publishedAt": "待核验",
+          "url": "http://ggzy.pds.gov.cn/jszbpdss/96847.jhtml"
+        },
+        {
+          "title": "【平公资建2026129号】郏县姚庄乡传统村落整治及水资源保护利用项目EPC及监理（第一标段）-招标公告",
+          "section": "第一标段",
+          "publishedAt": "待核验",
+          "url": "http://ggzy.pds.gov.cn/jszbpdss/96846.jhtml"
+        }
+      ]
     },
     {
       "id": 1538345618,
@@ -2265,7 +2256,11 @@
       ],
       "fingerprint": "f350824d8858da2822044d141c5981cc6ddaced93477446b39b4cfb620722747",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "scoped",
+      "supervisionEvidence": "招标范围： 监理服务范围： 包含但不限于施工准备阶段、施工阶段、工程收尾阶段（包括但不限于竣工验收、整改、工程移",
+      "ambiguousSection": false
     },
     {
       "id": 1518857167,
@@ -2311,7 +2306,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": "HJ-G2026-21",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 639846762,
@@ -2352,7 +2351,11 @@
       ],
       "fingerprint": "d103962cadc2cfb645d02e7d97e6693ba41980d916f87e08d24e7ffe350620b0",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "HKG-CG-202608001",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1256719572,
@@ -2393,7 +2396,11 @@
       ],
       "fingerprint": "729b016fa645ba0f660d8fe4f7f7303efbfe4759c3f207a5738cbff47ddae49a",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "MZF-2026-05-04",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": true
     },
     {
       "id": 453055816,
@@ -2434,7 +2441,11 @@
       ],
       "fingerprint": "49bedd71ec548a6ae1e26ee1b76c1cb7a8e3fb1a49b62c150bc25ab065379f86",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "获采招标采购",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1804455275,
@@ -2475,7 +2486,11 @@
       ],
       "fingerprint": "683c1a42db96ecb660d0eef4ef61dcbf5be663d3aeead7842910ba919971c6fd",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1477126023,
@@ -2516,7 +2531,11 @@
       ],
       "fingerprint": "63eb35dda551bb97842fd6d7dae71e287ce2c272e355965cbdd54ce5ed10758f",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 192010486,
@@ -2558,7 +2577,11 @@
       ],
       "fingerprint": "6eb81d87f7aa9e32c0c9ae9e00554d5f5550741794d2aac37cdb7b38f087bf1e",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 91728031,
@@ -2599,7 +2622,11 @@
       ],
       "fingerprint": "8e74e87bccc6e0384e35b7f35c2b6df52bdfd8d2de41a2ede8697f1c66589601",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 119755249,
@@ -2640,7 +2667,11 @@
       ],
       "fingerprint": "df0240fc1f77ee99d7f8df5c115af9359f352a28292d12569a2caab379040c67",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 1860839737,
@@ -2681,7 +2712,11 @@
       ],
       "fingerprint": "d660ec5940ff696dc4ff7bc8444182e8c215890a88c540d690afcc0ec91b079d",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 546524751,
@@ -2722,7 +2757,11 @@
       ],
       "fingerprint": "0490d15f227f846ecbcf393e013600321d2c3b4b3339841fcd488175121f192d",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": "新交GCZB-2026-0094",
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 747732647,
@@ -2768,7 +2807,11 @@
         "type": "内容更新",
         "title": "原公告正文或关键字段发生变化",
         "date": "2026-08-21 16:13"
-      }
+      },
+      "tenderNumber": null,
+      "supervisionConfidence": "loose",
+      "supervisionEvidence": null,
+      "ambiguousSection": false
     },
     {
       "id": 906192219,
@@ -2809,7 +2852,11 @@
       ],
       "fingerprint": "cda77fb875d54d3bdd08690f11da57dc30a78605eedb963725e38aaf975fe873",
       "listAvailable": true,
-      "homeAvailable": null
+      "homeAvailable": null,
+      "tenderNumber": null,
+      "supervisionConfidence": "explicit",
+      "supervisionEvidence": "监理标段",
+      "ambiguousSection": false
     }
   ],
   "sources": [
@@ -3203,7 +3250,7 @@
   "summary": {
     "date": "2026-08-21",
     "generatedAt": "2026-08-21 16:13",
-    "newProjectCount": 48,
+    "newProjectCount": 43,
     "expiringWithin3DaysCount": 4,
     "earliestProjects": [
       {
@@ -3234,7 +3281,7 @@
     {
       "date": "2026-08-21",
       "generatedAt": "2026-08-21 16:13",
-      "newProjectCount": 48,
+      "newProjectCount": 43,
       "expiringWithin3DaysCount": 4,
       "earliestProjects": [
         {
