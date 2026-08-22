@@ -12,6 +12,16 @@ const source = {
   region: "河南省 · 开封市 · 通许县",
 };
 
+function extractSentence(sentence, title = "截止时间语义测试监理项目") {
+  return extractProject({
+    title,
+    html: `<h2>${title}</h2><p>${sentence}</p>`,
+    url: `https://example.test/${encodeURIComponent(sentence)}`,
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+}
+
 test("extracts the PRD sample fields without guessing", () => {
   const html = `
     <h2>通许县宏达大道（人民路-第一污水处理厂）排水管网改造工程-第二标段招标公告</h2>
@@ -66,6 +76,48 @@ test("extracts investments when punctuation and approximation qualifiers are cha
   }
 });
 
+test("rejects institution placeholders and strips trailing contact fields", () => {
+  const placeholderCases = [
+    {
+      sentence: "招标人：详见招标文件 招标代理机构：见招标文件。",
+      pending: ["招标人", "招标代理机构"],
+    },
+    {
+      sentence: "本项目招标人为：待定。",
+      pending: ["招标人"],
+    },
+    {
+      sentence: "招标人：/ 代理机构：无。",
+      pending: ["招标人", "招标代理机构"],
+    },
+  ];
+
+  for (const { sentence, pending } of placeholderCases) {
+    const project = extractSentence(sentence);
+    for (const field of pending) assert.equal(project.pendingFields.includes(field), true, `${sentence} ${field}`);
+    if (pending.includes("招标人")) assert.equal(project.client, "待核验", sentence);
+    if (pending.includes("招标代理机构")) assert.equal(project.agency, "待核验", sentence);
+  }
+
+  const cleaned = extractSentence("招标人：郑州市城建局 联系电话：0371-12345678 传真：0371-1 邮箱：test@example.test。");
+  assert.equal(cleaned.client, "郑州市城建局");
+  assert.equal(cleaned.pendingFields.includes("招标人"), false);
+
+  const validInstitutions = [
+    ["招标人：兴业银行股份有限公司郑州分行。", "client", "兴业银行股份有限公司郑州分行"],
+    ["招标人：尉氏县城市管理局 ( 尉氏县城市综合执法局 )。", "client", "尉氏县城市管理局 ( 尉氏县城市综合执法局 )"],
+    ["招标人：尉氏永达国家粮食储备库。", "client", "尉氏永达国家粮食储备库"],
+    ["招标代理机构：汇衡昊远项目管理咨询有限公司 联 系 人：王英杰。", "agency", "汇衡昊远项目管理咨询有限公司"],
+  ];
+  for (const [sentence, field, expected] of validInstitutions) {
+    assert.equal(extractSentence(sentence)[field], expected, sentence);
+  }
+
+  const polluted = extractSentence("招标代理机构：河南中晟工程管理有限公司 项目。");
+  assert.equal(polluted.agency, "待核验");
+  assert.equal(polluted.pendingFields.includes("招标代理机构"), true);
+});
+
 test("prefers the original announcement body over its list summary", () => {
   const title = "原阳县原兴路、文岩街、惠民街、新一路雨污水管网及新一路污水提升泵站新建工程1标段、2标段、3标段";
   const listText = `[河南省·新乡市·新乡市] [公开招标] [监理] ${title} [正在报名]`;
@@ -96,6 +148,74 @@ test("prefers the original announcement body over its list summary", () => {
   assert.equal(project.pendingFields?.includes("投标截止时间"), false);
 });
 
+test("scores category evidence only from the title and project overview", () => {
+  const title = "渑池至淅川高速公路洛宁至嵩县段施工监理及试验检测招标公告";
+  const project = extractProject({
+    title,
+    html: `
+      <h2>${title}</h2>
+      <p>项目概况：本项目为高速公路交通工程，包含公路路基、互通及服务区施工监理。</p>
+      <p>投标截止时间：2026年8月24日09时30分。</p>
+      <h3>环境保护通用要求</h3>
+      <p>施工须执行水土保持、河道保护、水库周边管理要求。</p>
+    `,
+    url: "https://example.test/highway-category",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.category, "交通工程监理");
+});
+
+test("extracts numbered sections whether or not they start with 第", () => {
+  const cases = [
+    ["滑县智泊停车场建设项目（医院地下停车场）二标段监理招标公告", "二标段"],
+    ["水利枢纽工程SLZYQJL-1标段施工监理招标公告", "1标段"],
+    ["某水库除险加固工程第三标段监理招标公告", "第三标段"],
+  ];
+
+  for (const [title, expected] of cases) {
+    const project = extractProject({
+      title,
+      html: `<h2>${title}</h2><p>项目概况：本标段提供施工监理服务。</p>`,
+      url: `https://example.test/section/${encodeURIComponent(title)}`,
+      publishedAt: "2026-08-01",
+      source,
+    }, new Date("2026-08-01T00:00:00+08:00"));
+    assert.equal(project.section, expected, title);
+  }
+});
+
+test("does not infer a numbered supervision section from unrelated body headings", () => {
+  const title = "2026年上蔡县无量寺乡猪场提升改造项目监理标段、设计采购施工总承包（EPC）标段";
+  const project = extractProject({
+    title,
+    html: `<h2>${title}</h2><p>1标段：设计采购施工总承包。</p><p>2标段：设备采购。</p><p>本公告对应监理标段。</p>`,
+    url: "https://example.test/section/body-heading-regression",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.section, "监理标段");
+});
+
+test("selects the section declared as supervision instead of an EPC section mentioning supervision management", () => {
+  const title = "长葛市农村自来水提升项目工程总承包（EPC）及监理项目招标公告";
+  const project = extractProject({
+    title,
+    html: `
+      <h2>${title}</h2>
+      <p>第一标段：工程总承包（EPC）标段，并对工程项目进行监理管理管控。</p>
+      <p>第二标段：监理。</p>
+    `,
+    url: "https://example.test/section/epc-supervision-management",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.section, "第二标段");
+});
+
 test("normalizes fragmented dates and common deadline label variants", () => {
   const cases = [
     ["投标文件递交的截止时间（投标截止时间，下同）为 20 26 年 9 月 9 日上午 09 时 00 分。", "2026-09-09 09:00"],
@@ -120,6 +240,84 @@ test("normalizes fragmented dates and common deadline label variants", () => {
 
     assert.ok(project);
     assert.equal(project.deadline, expected, sentence);
+  }
+});
+
+test("uses one complete label set for confirmed and document-required deadlines", () => {
+  const confirmedCases = [
+    "投标文件提交截止时间：2026年8月24日09时30分。",
+    "投标文件上传截止时间：2026年8月24日09时30分。",
+  ];
+  for (const sentence of confirmedCases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, "2026-08-24 09:30", sentence);
+    assert.equal(project.bidDeadlineStatus, "confirmed", sentence);
+  }
+
+  const documentRequiredCases = [
+    "响应文件提交截止时间：详见招标文件。",
+    "响应文件递交截止时间：见招标文件。",
+  ];
+  for (const sentence of documentRequiredCases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, null, sentence);
+    assert.equal(project.bidDeadlineStatus, "document_required", sentence);
+  }
+});
+
+test("explicit document-required deadlines override every nearby date", () => {
+  const cases = [
+    "投标文件递交截止时间：详见招标文件（不早于2026年8月24日09时00分）。",
+    "投标截止时间详见招标文件，招标文件发售至2026年8月10日。",
+  ];
+
+  for (const sentence of cases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, null, sentence);
+    assert.equal(project.bidDeadlineStatus, "document_required", sentence);
+    assert.match(project.bidDeadlineEvidence, /见招标文件/, sentence);
+    assert.equal(project.pendingFields.includes("投标截止时间"), true, sentence);
+  }
+});
+
+test("keeps an explicit deadline when only its following location is in the tender document", () => {
+  const cases = [
+    ["7.2投标文件的上传/递交截止时间（投标截止时间: 2026年07月24日 9时00分）和地点见招标文件。", "2026-07-24 09:00"],
+    ["7.2投标文件的上传/递交截止时间为2026年8月11日 9时00分（北京时间），地点详见招标文件。", "2026-08-11 09:00"],
+  ];
+
+  for (const [sentence, expected] of cases) {
+    const project = extractProject({
+      title: "截止时间与递交地点语义测试监理项目",
+      html: `<h2>截止时间与递交地点语义测试监理项目</h2><p>${sentence}</p>`,
+      url: `https://example.test/deadline-location/${encodeURIComponent(sentence)}`,
+      publishedAt: "2026-07-01",
+      source,
+    }, new Date("2026-07-01T00:00:00+08:00"));
+    assert.equal(project.bidDeadline, expected, sentence);
+    assert.equal(project.bidDeadlineStatus, "confirmed", sentence);
+  }
+});
+
+test("P0-1 distinguishes earliest, latest, and nearest deadline strategies", () => {
+  const sentence = "报名自2026年8月3日开始，投标文件递交截止时间为2026年8月24日09时30分，补充文件于2026年8月30日发布。";
+  const project = extractSentence(sentence);
+  assert.equal(project.bidDeadline, "2026-08-24 09:30");
+  assert.equal(project.bidDeadlineStatus, "confirmed");
+});
+
+test("resolves deadline ranges and rejects ambiguous date alternatives", () => {
+  const cases = [
+    ["投标截止时间：自2026年8月5日起至2026年8月24日09时30分止。", "2026-08-24 09:30", "confirmed"],
+    ["投标文件递交截止时间为2026年8月24日09时30分，开标时间2026年8月24日09时30分，报名自2026年8月3日开始。", "2026-08-24 09:30", "confirmed"],
+    ["5.1 投标文件上传的截止时间：2026年08月24日09时30分（其中2026年08月10日前完成注册）。", "2026-08-24 09:30", "confirmed"],
+    ["投标截止时间：2026年8月24日09时30分或2026年8月25日09时30分，以交易系统显示为准。", null, "pending"],
+  ];
+
+  for (const [sentence, deadline, status] of cases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, deadline, sentence);
+    assert.equal(project.bidDeadlineStatus, status, sentence);
   }
 });
 
