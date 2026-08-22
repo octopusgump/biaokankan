@@ -449,14 +449,58 @@ export function extractTimeFields(text, publishedAt) {
   };
 }
 
+// 真实公告里「总投资」的写法远不止「总投资 X 万元」：标签会写成投资估算 / 工程概算 /
+// 建安投资，单位可能是元或亿元，政府站把 PDF 转成 HTML 时还会在数字中间插入空格。
+// 标签按可信度从高到低排列，先命中的先返回。
+const INVESTMENT_LABELS = [
+  "总投资额",
+  "总投资",
+  "投资总额",
+  "投资估算",
+  "投资概算",
+  "投资预算",
+  "投资金额",
+  "投资规模",
+  "概算总投资",
+  "概算投资",
+  "工程概算",
+  "计划投资",
+  "项目投资",
+  "工程投资",
+  "拟投资",
+  "建安投资",
+  "建安费估算",
+  "建安费",
+];
+
+const INVESTMENT_UNITS = new Map([
+  ["亿元", 10_000],
+  ["万元", 1],
+  ["元", 0.0001],
+]);
+
+// 标签和金额之间只允许一小段限定语（「约为」「：本项目工程概算为」）。
+// 不允许跨逗号、句号、分号和顿号——后面的金额多半属于另一个字段；
+// 也不允许出现「标段」——那说明金额被限定到某个标段，不是项目总投资。
+const INVESTMENT_GAP = String.raw`(?:(?!标段)[^\d，,。；;、\n]){0,14}`;
+// 数字中间可能被插入空格（「5 80 万元」），先整体捕获再清洗校验。
+const INVESTMENT_AMOUNT = String.raw`(\d[\d,.\s]*\d|\d)`;
+const INVESTMENT_UNIT = String.raw`\s*(亿元|万元|元)`;
+
+const INVESTMENT_PATTERNS = INVESTMENT_LABELS.map(
+  (label) => new RegExp(`${label}${INVESTMENT_GAP}${INVESTMENT_AMOUNT}${INVESTMENT_UNIT}`),
+);
+
 function extractInvestment(text) {
-  const patterns = [
-    /(?:本)?(?:项目|工程)?总投资(?:(?:\s*[：:]\s*)|(?:\s*(?:约|为)\s*)){0,3}(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*万元/,
-    /建安费(?:估算)?(?:(?:\s*[：:]\s*)|(?:\s*(?:约|为)\s*)){0,3}(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*万元/,
-  ];
-  for (const pattern of patterns) {
-    const value = text.match(pattern)?.[1];
-    if (value) return `${Number(value.replace(/,/g, "")).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 万元`;
+  for (const pattern of INVESTMENT_PATTERNS) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const digits = match[1].replace(/[,\s]/g, "");
+    // 清洗后仍不是一个合法数字（例如「1.2.3」）就当作没识别出来。
+    if (!/^\d+(?:\.\d+)?$/.test(digits)) continue;
+    const amount = Number(digits) * INVESTMENT_UNITS.get(match[2]);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    return `${amount.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 万元`;
   }
   return "待核验";
 }
