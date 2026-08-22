@@ -23,13 +23,15 @@ test("GitHub Pages ships entry files for every public route", async () => {
 
 test("the static entry dispatches deep links to the correct screen", async () => {
   const entry = await readFile(new URL("../github-pages/main.tsx", import.meta.url), "utf8");
+  const landing = await readFile(new URL("../app/public-intro.tsx", import.meta.url), "utf8");
 
   assert.match(entry, /pathname === "\/radar"/);
   assert.match(entry, /pathname === "\/radar\/admin"/);
   assert.match(entry, /pathname === "\/radar\/project"/);
   assert.match(entry, /detailFromQuery/);
   assert.match(entry, /<PreviewAccess>/);
-  assert.match(entry, /initialSnapshot/);
+  assert.match(entry, /<Home initialSnapshot=\{snapshot\}/);
+  assert.match(landing, /if \(initialSnapshot\) return;/);
   assert.match(await readFile(new URL("../vite.pages.config.ts", import.meta.url), "utf8"), /BIAOKANKAN_PAGES_ENCRYPTED": "true"/);
   assert.match(await readFile(new URL("../vite.china.config.ts", import.meta.url), "utf8"), /BIAOKANKAN_PAGES_ENCRYPTED": "false"/);
 });
