@@ -1,9 +1,26 @@
 .preview-lock-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 48px 20px;
   display: grid;
   place-items: center;
   background: var(--parchment);
+}
+
+.preview-access-stage {
+  min-height: 132px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+}
+
+.preview-access-stage .preview-lock-brand {
+  justify-content: center;
+}
+
+.preview-access-content {
+  min-height: 100vh;
+  animation: preview-access-content-in 240ms ease-out both;
 }
 
 .preview-lock-card {
@@ -13,6 +30,7 @@
   border-radius: 18px;
   background: var(--canvas);
   box-shadow: 0 24px 60px rgba(45, 72, 102, .12);
+  animation: preview-access-card-in 240ms ease-out both;
 }
 
 .preview-lock-brand {
@@ -115,11 +133,35 @@
   font-size: 12px;
 }
 
-.preview-lock-progress {
-  min-height: 48px;
-  padding: 13px 0;
+.preview-checking-progress {
+  min-height: 44px;
+  margin-top: 24px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
+  animation: preview-access-progress-in 160ms ease-out both;
+}
+
+.preview-checking-dots {
+  height: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.preview-checking-dots i {
+  width: 4px;
+  height: 4px;
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.preview-access-exit {
+  pointer-events: none;
+  animation: preview-access-gate-out 200ms ease-out both;
 }
 
 .preview-lock-note {
@@ -128,6 +170,37 @@
   color: var(--muted);
   font-size: 11px;
   line-height: 1.65;
+}
+
+@keyframes preview-access-card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes preview-access-content-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes preview-access-progress-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes preview-access-gate-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .preview-checking-dots i { animation: preview-checking-dot 900ms ease-in-out infinite; }
+  .preview-checking-dots i:nth-child(2) { animation-delay: 120ms; }
+  .preview-checking-dots i:nth-child(3) { animation-delay: 240ms; }
+}
+
+@keyframes preview-checking-dot {
+  0%, 60%, 100% { opacity: .35; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
 }
 
 @media (max-width: 640px) {

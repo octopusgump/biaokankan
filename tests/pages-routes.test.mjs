@@ -34,6 +34,25 @@ test("the static entry dispatches deep links to the correct screen", async () =>
   assert.match(await readFile(new URL("../vite.china.config.ts", import.meta.url), "utf8"), /BIAOKANKAN_PAGES_ENCRYPTED": "false"/);
 });
 
+test("stored credentials use a quiet branded transition instead of flashing the password form", async () => {
+  const component = await readFile(new URL("../github-pages/preview-access.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../github-pages/preview-access.css", import.meta.url), "utf8");
+  const checkingStart = component.indexOf('if (state === "checking")');
+  const lockedStart = component.indexOf('const unavailable = state === "unavailable"');
+
+  assert.notEqual(checkingStart, -1, "the credential check needs its own render branch");
+  assert.ok(lockedStart > checkingStart, "the locked screen must render after the checking branch");
+  const checkingMarkup = component.slice(checkingStart, lockedStart);
+  assert.match(checkingMarkup, /<PreviewBrand \/>/);
+  assert.match(checkingMarkup, /showCheckingProgress && !isExiting/);
+  assert.doesNotMatch(checkingMarkup, /输入临时访问密码|<form|<input/);
+  assert.match(component, /const checkingProgressDelayMs = 300;/);
+  assert.match(component, /const gateExitDurationMs = 200;/);
+  assert.match(styles, /\.preview-access-content[\s\S]*?240ms ease-out/);
+  assert.match(styles, /\.preview-access-exit[\s\S]*?200ms ease-out/);
+  assert.match(styles, /@media \(prefers-reduced-motion: no-preference\)/);
+});
+
 test("the published snapshot keeps bid deadlines separate from document acquisition windows", async () => {
   const password = process.env.BIAOKANKAN_PREVIEW_PASSWORD;
   assert.ok(password, "encrypted Pages tests require BIAOKANKAN_PREVIEW_PASSWORD");
