@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -131,6 +131,7 @@ test(
     assert.ok(mapBlock, "production cache-control map was not found");
 
     const fixtureRoot = await mkdtemp(join(tmpdir(), "biaokankan-nginx-"));
+    await chmod(fixtureRoot, 0o755);
     const webRoot = join(fixtureRoot, "www");
     await mkdir(join(webRoot, "data"), { recursive: true });
     await Promise.all([
