@@ -44,20 +44,17 @@ test("the published snapshot keeps bid deadlines separate from document acquisit
   assert.equal(snapshot.storage.contractVersion, 4);
   assert.equal(snapshot.summary.summaryVersion, 2);
   assert.equal(Object.hasOwn(snapshot.summary, "expiringWithin3DaysCount"), false);
-  const samples = [
-    ["西平县乡村振兴肉牛产业融合发展建设项目", "2026-06-16 08:00", "2026-06-23 18:00"],
-    ["正阳县慎南路", "2026-05-14 08:00", "2026-05-20 18:00"],
-  ];
-
-  for (const [name, start, end] of samples) {
-    const project = snapshot.projects.find((item) => item.name.includes(name));
-    assert.ok(project, `${name} must remain in the real snapshot`);
-    assert.equal(project.bidDeadline, null);
-    assert.equal(project.deadline, null);
-    assert.equal(project.bidDeadlineStatus, "document_required");
-    assert.match(project.bidDeadlineEvidence, /见招标文件/);
-    assert.equal(project.documentAcquireStart, start);
-    assert.equal(project.documentAcquireDeadline, end);
-    assert.equal(project.deadlineState, "pending");
+  // 不再断言某几条线上公告必须存在。它们会随来源下架或 90 天保留期到期而消失，
+  // 届时失败的是测试而不是产品，而这两个测试位于 pnpm build:pages 的部署链路上。
+  // 改为断言规则：快照中出现的每一条 document_required 项目都必须满足
+  // “投标截止时间与招标文件获取窗口分离”的契约。
+  // 这两条公告本身的完整字段由 tests/crawler.test.mjs 的 fixture 单测覆盖，不依赖线上数据。
+  const documentRequired = snapshot.projects.filter((project) => project.bidDeadlineStatus === "document_required");
+  for (const project of documentRequired) {
+    assert.equal(project.bidDeadline, null, project.name);
+    assert.equal(project.deadline, null, project.name);
+    assert.match(project.bidDeadlineEvidence, /(?:详?见|以)[^。；;]{0,40}招标文件/, project.name);
+    assert.equal(project.bidDeadlineVerifiedAt, null, project.name);
+    assert.equal(project.deadlineState, "pending", project.name);
   }
 });
