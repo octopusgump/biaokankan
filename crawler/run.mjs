@@ -134,9 +134,12 @@ const retainedFromFailedSources = previous.projects
   .filter((project) => configuredNames.has(project.source) && (!successfulNames.has(project.source) || partialNames.has(project.source)))
   .map((project) => retainProjectWithLatestLinkState(project, sources.find((source) => source.name === project.source)));
 const finished = new Date();
-const projects = collapseDuplicates([...mergedFresh, ...retainedFromFailedSources]
-  .filter((project, index, all) => all.findIndex((item) => item.url === project.url) === index)
-  .filter((project) => withinRetention(project, RETENTION_DAYS, started)), started)
+const projects = collapseDuplicates(
+  [...mergedFresh, ...retainedFromFailedSources]
+    .filter((project, index, all) => all.findIndex((item) => item.url === project.url) === index),
+  started,
+)
+  .filter((project) => withinRetention(project, RETENTION_DAYS, started))
   .map((project) => ({
     ...project,
     deadline: project.bidDeadline,
