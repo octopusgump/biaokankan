@@ -75,7 +75,11 @@ export const SOURCE_DEFINITIONS = [
     name: "安阳市公共资源交易中心",
     entry: "https://ggzy.anyang.gov.cn/",
     listEntry: "https://ggzy.anyang.gov.cn/ayggzy/jyxx/001001/001001002/tradelist.html",
-    scanEntry: "https://ggzy.anyang.gov.cn/",
+    // 首页只挂几条最新信息，公告量大的站监理公告会被挤掉；列表页作为补充入口。
+    scanEntries: [
+      "https://ggzy.anyang.gov.cn/",
+      "https://ggzy.anyang.gov.cn/ayggzy/jyxx/001001/001001002/tradelist.html",
+    ],
     region: "河南省 · 安阳市",
     type: "公共资源交易中心",
     adapter: "generic-html",
@@ -87,7 +91,11 @@ export const SOURCE_DEFINITIONS = [
     name: "鹤壁市公共资源交易中心",
     entry: "https://ggzy.hebi.gov.cn/",
     listEntry: "https://ggzy.hebi.gov.cn/jyxx/006001/006001001/transaction_infos.html?cnum=006001001",
-    scanEntry: "https://ggzy.hebi.gov.cn/",
+    // 首页只挂几条最新信息，公告量大的站监理公告会被挤掉；列表页作为补充入口。
+    scanEntries: [
+      "https://ggzy.hebi.gov.cn/",
+      "https://ggzy.hebi.gov.cn/jyxx/006001/006001001/transaction_infos.html?cnum=006001001",
+    ],
     region: "河南省 · 鹤壁市",
     type: "公共资源交易中心",
     adapter: "generic-html",
@@ -112,7 +120,11 @@ export const SOURCE_DEFINITIONS = [
     name: "焦作市公共资源交易中心",
     entry: "https://ggzy.jiaozuo.gov.cn/",
     listEntry: "https://ggzy.jiaozuo.gov.cn/jyxx/006001/006001001/project.html",
-    scanEntry: "https://ggzy.jiaozuo.gov.cn/",
+    // 首页只挂几条最新信息，公告量大的站监理公告会被挤掉；列表页作为补充入口。
+    scanEntries: [
+      "https://ggzy.jiaozuo.gov.cn/",
+      "https://ggzy.jiaozuo.gov.cn/jyxx/006001/006001001/project.html",
+    ],
     region: "河南省 · 焦作市",
     type: "公共资源交易中心",
     adapter: "generic-html",
@@ -124,7 +136,11 @@ export const SOURCE_DEFINITIONS = [
     name: "许昌市公共资源交易中心",
     entry: "https://ggzy.xuchang.gov.cn/",
     listEntry: "https://ggzy.xuchang.gov.cn/jyxx/jyxx.html",
-    scanEntry: "https://ggzy.xuchang.gov.cn/",
+    // 首页只挂几条最新信息，公告量大的站监理公告会被挤掉；列表页作为补充入口。
+    scanEntries: [
+      "https://ggzy.xuchang.gov.cn/",
+      "https://ggzy.xuchang.gov.cn/jyxx/jyxx.html",
+    ],
     region: "河南省 · 许昌市",
     type: "公共资源交易中心",
     adapter: "generic-html",
@@ -146,7 +162,17 @@ export const SOURCE_DEFINITIONS = [
     name: "三门峡市公共资源交易中心",
     entry: "http://gzjy.smx.gov.cn/",
     listEntry: "http://gzjy.smx.gov.cn/jyxx/001001/moreinfojy.html",
-    scanEntry: "http://gzjy.smx.gov.cn/jyxx/001001/moreinfojy.html",
+    // 001001001 是招标公告，001001013 是招标计划。该站的监理只出现在招标计划里，
+    // 按仓库所有者决定一并收录；计划入口地址按站点自身 URL 规律推断，
+    // 声明为非必需入口，万一地址不对只记 issue，不会拖垮招标公告主入口。
+    scanEntries: [
+      "http://gzjy.smx.gov.cn/jyxx/001001/moreinfojy.html",
+      {
+        url: "http://gzjy.smx.gov.cn/jyxx/001001/001001013/moreinfojy.html",
+        kind: "招标计划",
+        detailPattern: /\/jyxx\/001001\/001001013\/20\d{6}\//i,
+      },
+    ],
     region: "河南省 · 三门峡市",
     type: "公共资源交易中心",
     adapter: "generic-html",
@@ -246,14 +272,14 @@ export function lowEntryIssue(source, read) {
   };
 }
 
-export async function scanSource(source, now = new Date()) {
+export async function scanSource(source, now = new Date(), deps = {}) {
   let result;
   if (source.adapter === "epoint-search") result = await scanEpointSource(source, now);
   else if (source.adapter === "kaifeng-html") result = await scanKaifeng(source, now);
   else if (source.adapter === "henan-public-api") result = await scanHenanPublic(source, now);
   else if (source.adapter === "xinxiang-html") result = await scanXinxiang(source, now);
   else if (source.adapter === "shangqiu-html") result = await scanShangqiu(source, now);
-  else if (source.adapter === "generic-html") result = await scanGenericHtml(source, now);
+  else if (source.adapter === "generic-html") result = await scanGenericHtml(source, now, deps);
   else if (source.adapter === "luohe-api") result = await scanLuohe(source, now);
   else throw new Error(`${source.name} 没有可用适配器`);
 
@@ -417,19 +443,67 @@ async function scanShangqiu(source, now) {
   return scanHtmlEntries(source, entries, now);
 }
 
-async function scanGenericHtml(source, now) {
-  const scanEntry = source.scanEntry || source.listEntry;
-  const html = await fetchSourceText(source, scanEntry);
-  const entries = dedupeBy(
-    extractAnchors(html, scanEntry)
-      .filter((item) => source.detailPattern.test(item.url))
-      .filter((item) => isSupervisionText(`${item.title} ${item.text}`))
-      .filter((item) => !/(?:招标计划|中标|结果|候选人|合同|终止|废标|文件公示|预公示|变更)/.test(item.title || item.text || ""))
-      .map(withPublishedDate)
-      .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now)),
-    (item) => item.url,
-  );
-  return scanHtmlEntries(source, entries, now);
+// 一个来源往往不止一个入口：安阳、鹤壁、焦作、许昌原来只扫首页，
+// 首页只挂几条最新信息，公告量大的站（焦作站内搜「监理」有 2396 条）
+// 监理公告早被挤掉了；三门峡的监理只出现在「招标计划」栏目里。
+// 所以来源可以声明 scanEntries：第一个是主入口，抓不到仍然整源失败；
+// 其余是补充入口，抓不到只记 issue，不连累主入口已经拿到的公告。
+export function resolveScanEntries(source) {
+  const declared = Array.isArray(source.scanEntries) && source.scanEntries.length
+    ? source.scanEntries
+    : [source.scanEntry || source.listEntry];
+  return declared.map((entry, index) => {
+    const value = typeof entry === "string" ? { url: entry } : { ...entry };
+    return {
+      url: value.url,
+      kind: value.kind || "招标公告",
+      detailPattern: value.detailPattern || source.detailPattern,
+      required: value.required ?? index === 0,
+    };
+  });
+}
+
+// 「招标计划」本身就是一种公告类型，只有在来源明确声明要收时才放行；
+// 其余栏目继续把它当噪音排除，避免所有来源被计划类公告淹没。
+const EXCLUDED_NOTICE_TITLES = /(?:招标计划|中标|结果|候选人|合同|终止|废标|文件公示|预公示|变更)/;
+const EXCLUDED_PLAN_TITLES = /(?:中标|结果|候选人|合同|终止|废标|文件公示|预公示|变更)/;
+
+export function excludedTitlePattern(kind) {
+  return kind === "招标计划" ? EXCLUDED_PLAN_TITLES : EXCLUDED_NOTICE_TITLES;
+}
+
+async function scanGenericHtml(source, now, deps = {}) {
+  const fetchPage = deps.fetchPage || fetchSourceText;
+  const collected = [];
+  const issues = [];
+  for (const scanEntry of resolveScanEntries(source)) {
+    let html;
+    try {
+      html = await fetchPage(source, scanEntry.url);
+    } catch (error) {
+      if (scanEntry.required) throw error;
+      issues.push({
+        level: "入口不可用",
+        url: scanEntry.url,
+        title: `${source.name}${scanEntry.kind}入口`,
+        detail: error instanceof Error ? error.message : String(error),
+        action: "核对该入口地址是否仍然有效",
+      });
+      continue;
+    }
+    collected.push(
+      ...extractAnchors(html, scanEntry.url)
+        .filter((item) => scanEntry.detailPattern.test(item.url))
+        .filter((item) => isSupervisionText(`${item.title} ${item.text}`))
+        .filter((item) => !excludedTitlePattern(scanEntry.kind).test(item.title || item.text || ""))
+        .map(withPublishedDate)
+        .filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now))
+        .map((item) => ({ ...item, noticeType: scanEntry.kind })),
+    );
+  }
+  const entries = dedupeBy(collected, (item) => item.url);
+  const result = await scanHtmlEntries(source, entries, now, deps);
+  return { ...result, issues: [...issues, ...result.issues] };
 }
 
 async function scanLuohe(source, now) {
@@ -478,14 +552,17 @@ async function scanLuohe(source, now) {
   return { source, read: entries.length, projects: dedupeBy(projects, (project) => project.url), issues };
 }
 
-async function scanHtmlEntries(source, entries, now) {
+async function scanHtmlEntries(source, entries, now, deps = {}) {
+  const fetchDetail = deps.fetchDetail || fetchProjectDetailHtml;
   const projects = [];
   const issues = [];
   for (const entry of entries) {
     try {
-      const html = await fetchProjectDetailHtml(source, entry);
+      const html = await fetchDetail(source, entry);
       const project = extractProject({ ...entry, html, source }, now);
-      if (project) projects.push(project);
+      // 招标计划不是招标公告：没有投标截止时间，估算价往往只是监理服务费，
+      // 必须带着来源类型进入快照，前端才不会把它当成可以立刻投标的公告。
+      if (project) projects.push({ ...project, noticeType: entry.noticeType || "招标公告" });
     } catch (error) {
       issues.push({
         url: entry.url,
