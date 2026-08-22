@@ -32,6 +32,12 @@ docs/development/AI_GIT_COLLABORATION_WORKFLOW.md
 8. **推送前必须**:`node --test tests/crawler.test.mjs`、`npx tsc --noEmit`、
    `pnpm lint` 三项全绿,并执行 `git diff --check`。
 9. 工作区不独立、存在归属不明的修改、基线不一致或规则冲突时,**立即停止 Git 写操作并报告**。
+10. **worktree**:远程容器通常只有一个工作目录,按工作流第五节「远程容器的 worktree 例外」
+    在同一目录内**串行**切换分支——同一时间只做一个任务,切换前工作区必须干净且已 push,
+    切换后立即报告新分支与基线;需要并行对比两个分支时只用
+    `git worktree add --detach` 建临时只读目录,用完 `git worktree remove` 删除。
+11. **每次 push 前按工作流第一节的模板输出报告**:已读取规则文件 / 规则文件路径与 Commit /
+    当前角色 / 当前分支与 worktree / 本次获得的 Git 授权。
 
 ## 三、Git 授权现状
 
