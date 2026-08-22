@@ -224,7 +224,7 @@ export function projectIdentity(project) {
 // 公告正文里字段之间常常只靠"（2）""3、""某某："分隔。捕获到下一个字段的开头就必须截断，
 // 否则项目名会把招标编号、建设地点一起吃进来。
 function truncateAtNextLabel(value) {
-  const boundary = value.search(/[（(]\s*\d+\s*[）)]|\s\d+\s*[、.．]|\s*[一二三四五六七八九十]\s*、|[^：:\s]{2,10}\s*[：:]/);
+  const boundary = value.search(/(?:联\s*系\s*人|联\s*系\s*电\s*话|电\s*话|传\s*真|电子?\s*邮\s*箱|邮\s*箱|项目\s*负责人)\s*[：:]|[（(]\s*\d+\s*[）)]|\s\d+\s*[、.．]|\s*[一二三四五六七八九十]\s*、|[^：:\s]{2,10}\s*[：:]/);
   return boundary > 0 ? value.slice(0, boundary) : value;
 }
 
@@ -246,7 +246,7 @@ function captureLabel(text, labels, maxLength = 100) {
 function normalizeInstitution(value) {
   const normalized = String(value || "").trim();
   if (!normalized || /^(?:详见招标文件|见招标文件|待定|无|-|\/)$/i.test(normalized)) return "";
-  const institutionSuffix = /(?:公司|局|中心|管理处|政府|集团|院|所|委员会|指挥部|办公室|学校|医院|银行|协会|合作社|项目部)(?:[（(][^）)]*[）)])?$/;
+  const institutionSuffix = /(?:公司|分行|支行|银行|局|管理处|处|中心|站|厂|库|队|政府|办事处|管委会|委员会|集团|大学|学院|学校|院|所|指挥部|办公室|医院|协会|合作社|项目部)\s*(?:[（(][^）)]*[）)])?$/;
   return institutionSuffix.test(normalized) ? normalized : "";
 }
 
@@ -367,13 +367,20 @@ function selectDeadlineCandidate(candidates, publishedDate) {
   return { candidate, evidence: candidate.evidence };
 }
 
+function evidenceRequiresDocument(evidence) {
+  const reference = /(?:详?见|以)[^。；;]{0,40}招标文件/.exec(evidence);
+  if (!reference) return false;
+  const firstDate = parseChineseDateMatches(evidence)[0];
+  return !firstDate || reference.index < firstDate.offset;
+}
+
 export function extractTimeFields(text, publishedAt) {
   let documentRequiredEvidence = null;
   for (const label of DEADLINE_LABELS) {
     let index = text.indexOf(label);
     while (index >= 0) {
       const evidence = evidenceNear(text, index);
-      if (/(?:详?见|以)[^。；;]{0,40}招标文件/.test(evidence)) {
+      if (evidenceRequiresDocument(evidence)) {
         documentRequiredEvidence = evidence;
         break;
       }
@@ -385,6 +392,8 @@ export function extractTimeFields(text, publishedAt) {
   const candidates = collectLabeledDates(text, DEADLINE_LABELS);
   const sectionTimePattern = /投标文件的递交\s+(?:\d+(?:\.\d+)?[、.]?\s*)?时间\s*[：:]/g;
   for (const match of text.matchAll(sectionTimePattern)) {
+    const evidence = evidenceNear(text, match.index);
+    if (!documentRequiredEvidence && evidenceRequiresDocument(evidence)) documentRequiredEvidence = evidence;
     candidates.push(...dateCandidatesNear(text, match.index, match[0].length));
   }
 
@@ -469,10 +478,25 @@ function cleanProjectName(title, text) {
 }
 
 function extractSection(title, text) {
-  const source = `${title} ${text.slice(0, 2500)}`;
-  const monitorSection = source.match(/(第?[一二三四五六七八九十\d]+\s*标段)[^。；\n]{0,45}监理|监理[^。；\n]{0,45}(第?[一二三四五六七八九十\d]+\s*标段)/);
-  if (monitorSection) return (monitorSection[1] || monitorSection[2]).replace(/\s+/g, "");
-  return title.match(/第?[一二三四五六七八九十\d]+\s*标段/)?.[0].replace(/\s+/g, "") || "监理标段";
+  const normalizedTitle = flattenText(title);
+  if (/监理\s*标段/.test(normalizedTitle)) return "监理标段";
+
+  const prefixedNearMonitor = normalizedTitle.match(/(第[一二三四五六七八九十\d]+\s*标段)\s*[-—:：、,，()（）]?\s*(?:施工)?监理|(?:施工)?监理\s*[-—:：、,，()（）]?\s*(第[一二三四五六七八九十\d]+\s*标段)/);
+  if (prefixedNearMonitor) return (prefixedNearMonitor[1] || prefixedNearMonitor[2]).replace(/\s+/g, "");
+
+  const prefixedTitleSections = [...normalizedTitle.matchAll(/第[一二三四五六七八九十\d]+\s*标段/g)]
+    .map((match) => match[0].replace(/\s+/g, ""));
+  if (new Set(prefixedTitleSections).size === 1) return prefixedTitleSections[0];
+
+  const bareSections = [...normalizedTitle.matchAll(/(?:^|[^\d.])((?:[一二三四五六七八九十]+|\d+)\s*标段)/g)]
+    .map((match) => match[1].replace(/\s+/g, ""));
+  if (new Set(bareSections).size === 1) return bareSections[0];
+
+  const body = decodeHtml(text).slice(0, 2500);
+  const prefixedBodySection = body.match(/(?:^|[。；\n])\s*(第[一二三四五六七八九十\d]+\s*标段)\s*[：:]?\s*(?:施工)?监理|(?:^|[。；\n])\s*(?:施工)?监理\s*[：:]?\s*(第[一二三四五六七八九十\d]+\s*标段)/);
+  return prefixedBodySection
+    ? (prefixedBodySection[1] || prefixedBodySection[2]).replace(/\s+/g, "")
+    : "监理标段";
 }
 
 function categoryEvidence(title, text) {

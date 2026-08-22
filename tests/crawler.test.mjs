@@ -102,6 +102,20 @@ test("rejects institution placeholders and strips trailing contact fields", () =
   const cleaned = extractSentence("招标人：郑州市城建局 联系电话：0371-12345678 传真：0371-1 邮箱：test@example.test。");
   assert.equal(cleaned.client, "郑州市城建局");
   assert.equal(cleaned.pendingFields.includes("招标人"), false);
+
+  const validInstitutions = [
+    ["招标人：兴业银行股份有限公司郑州分行。", "client", "兴业银行股份有限公司郑州分行"],
+    ["招标人：尉氏县城市管理局 ( 尉氏县城市综合执法局 )。", "client", "尉氏县城市管理局 ( 尉氏县城市综合执法局 )"],
+    ["招标人：尉氏永达国家粮食储备库。", "client", "尉氏永达国家粮食储备库"],
+    ["招标代理机构：汇衡昊远项目管理咨询有限公司 联 系 人：王英杰。", "agency", "汇衡昊远项目管理咨询有限公司"],
+  ];
+  for (const [sentence, field, expected] of validInstitutions) {
+    assert.equal(extractSentence(sentence)[field], expected, sentence);
+  }
+
+  const polluted = extractSentence("招标代理机构：河南中晟工程管理有限公司 项目。");
+  assert.equal(polluted.agency, "待核验");
+  assert.equal(polluted.pendingFields.includes("招标代理机构"), true);
 });
 
 test("prefers the original announcement body over its list summary", () => {
@@ -157,6 +171,7 @@ test("extracts numbered sections whether or not they start with 第", () => {
   const cases = [
     ["滑县智泊停车场建设项目（医院地下停车场）二标段监理招标公告", "二标段"],
     ["水利枢纽工程SLZYQJL-1标段施工监理招标公告", "1标段"],
+    ["某水库除险加固工程第三标段监理招标公告", "第三标段"],
   ];
 
   for (const [title, expected] of cases) {
@@ -169,6 +184,36 @@ test("extracts numbered sections whether or not they start with 第", () => {
     }, new Date("2026-08-01T00:00:00+08:00"));
     assert.equal(project.section, expected, title);
   }
+});
+
+test("does not infer a numbered supervision section from unrelated body headings", () => {
+  const title = "2026年上蔡县无量寺乡猪场提升改造项目监理标段、设计采购施工总承包（EPC）标段";
+  const project = extractProject({
+    title,
+    html: `<h2>${title}</h2><p>1标段：设计采购施工总承包。</p><p>2标段：设备采购。</p><p>本公告对应监理标段。</p>`,
+    url: "https://example.test/section/body-heading-regression",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.section, "监理标段");
+});
+
+test("selects the section declared as supervision instead of an EPC section mentioning supervision management", () => {
+  const title = "长葛市农村自来水提升项目工程总承包（EPC）及监理项目招标公告";
+  const project = extractProject({
+    title,
+    html: `
+      <h2>${title}</h2>
+      <p>第一标段：工程总承包（EPC）标段，并对工程项目进行监理管理管控。</p>
+      <p>第二标段：监理。</p>
+    `,
+    url: "https://example.test/section/epc-supervision-management",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.section, "第二标段");
 });
 
 test("normalizes fragmented dates and common deadline label variants", () => {
@@ -232,6 +277,25 @@ test("explicit document-required deadlines override every nearby date", () => {
     assert.equal(project.bidDeadlineStatus, "document_required", sentence);
     assert.match(project.bidDeadlineEvidence, /见招标文件/, sentence);
     assert.equal(project.pendingFields.includes("投标截止时间"), true, sentence);
+  }
+});
+
+test("keeps an explicit deadline when only its following location is in the tender document", () => {
+  const cases = [
+    ["7.2投标文件的上传/递交截止时间（投标截止时间: 2026年07月24日 9时00分）和地点见招标文件。", "2026-07-24 09:00"],
+    ["7.2投标文件的上传/递交截止时间为2026年8月11日 9时00分（北京时间），地点详见招标文件。", "2026-08-11 09:00"],
+  ];
+
+  for (const [sentence, expected] of cases) {
+    const project = extractProject({
+      title: "截止时间与递交地点语义测试监理项目",
+      html: `<h2>截止时间与递交地点语义测试监理项目</h2><p>${sentence}</p>`,
+      url: `https://example.test/deadline-location/${encodeURIComponent(sentence)}`,
+      publishedAt: "2026-07-01",
+      source,
+    }, new Date("2026-07-01T00:00:00+08:00"));
+    assert.equal(project.bidDeadline, expected, sentence);
+    assert.equal(project.bidDeadlineStatus, "confirmed", sentence);
   }
 });
 
