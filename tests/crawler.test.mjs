@@ -76,6 +76,69 @@ test("extracts investments when punctuation and approximation qualifiers are cha
   }
 });
 
+function investmentOf(sentence) {
+  const project = extractProject({
+    title: "投资召回测试监理项目",
+    html: `<h2>投资召回测试监理项目</h2><p>${sentence}</p>`,
+    url: `https://example.test/investment-recall/${encodeURIComponent(sentence)}`,
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+  assert.ok(project, sentence);
+  return project.investment;
+}
+
+// 线上快照里 43/62 个项目的「总投资」是待核验，下面每条都取自 public/data/radar.json
+// 中真实存在、但旧的两个正则识别不出来的写法。
+test("recovers investment from real-world label variants missed by the two legacy patterns", () => {
+  const cases = [
+    // 政府站把 PDF 转成 HTML 时会在数字中间插空格（同一段里的「202 6 年」是同样成因）。
+    ["本建设工程项目总投资约为 5 80 万元，最终金额以经政府相关部门审定的为准。", "580.00 万元"],
+    // 「总投资」后面多一个「额」字。
+    ["项目总投资额约为 3920.29万元。", "3,920.29 万元"],
+    // 亿元计价。
+    ["项目地块用地性质为商业用地，总投资约 7.2亿元。", "72,000.00 万元"],
+    // 元计价，需要换算成万元。
+    ["本项目投资估算为 29037408.97 元。", "2,903.74 万元"],
+    // 「工程投资」而不是「总投资」。
+    ["工程投资约780万元。", "780.00 万元"],
+    // 「建安投资」，旧正则只认「建安费」。
+    ["工程建安投资约 51919.3 万元，施工计划工期约 31 个月。", "51,919.30 万元"],
+    // 「计划投资」。
+    ["2.3项目计划投资： 1947.73万元。", "1,947.73 万元"],
+    // 标签与金额之间隔着一小段限定语。
+    ["2.5项目投资金额：本项目工程概算为63711.6万元，本项目为费率报价。", "63,711.60 万元"],
+    ["2.4 投资预算：本项目暂估工程费用约24167.04万元。", "24,167.04 万元"],
+    // 「总投资额度」旧正则读不到，于是退而读括号里的建安费，报出了偏小的数字。
+    ["2.4 总投资额度：约 8000 万元（其中建安费约： 6483.53 万元）。", "8,000.00 万元"],
+  ];
+
+  for (const [sentence, expected] of cases) {
+    assert.equal(investmentOf(sentence), expected, sentence);
+  }
+});
+
+// 召回率不能靠猜：PRD 要求识别不出来的字段只能显示「待核验」。
+test("keeps 待核验 rather than guessing from section-scoped or unrelated amounts", () => {
+  const cases = [
+    // 金额被限定到某个标段，不是项目总投资。
+    "2.2投资金额：一标段：38809958.34元。",
+    "2. 3、 预算金额 ： 29037408.97 元 (1标段： 18705299.47 元)",
+    // 逗号之后的金额属于另一个字段，不能跨句抓。
+    "本项目总投资由上级财政资金安排，投标保证金 5 万元。",
+    // 招标控制价、监理服务费都不是总投资。
+    "本次招标最高投标限价为 88.66 万元。",
+    "监理服务费为 50 万元。",
+    // 「投资」后面跟的根本不是金额单位。
+    "总投资规模详见招标文件，总建筑面积 41943.94 平方米。",
+    "2.4 建设规模：建设用地面积 4272.48 平方米，总建筑面积 41943.94 平方米。",
+  ];
+
+  for (const sentence of cases) {
+    assert.equal(investmentOf(sentence), "待核验", sentence);
+  }
+});
+
 test("rejects institution placeholders and strips trailing contact fields", () => {
   const placeholderCases = [
     {
