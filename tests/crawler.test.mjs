@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { collapseDuplicates, deadlinePresentation, extractAnchors, extractProject, isSupervisionText, projectFingerprint, projectIdentity, retainProjectWithLatestLinkState, supervisionScope, withinRetention } from "../crawler/core.mjs";
 import { runScan } from "../crawler/scan-run.mjs";
-import { lowEntryIssue } from "../crawler/sources.mjs";
+import { excludedTitlePattern, lowEntryIssue, resolveScanEntries, scanSource } from "../crawler/sources.mjs";
 import { evaluateSnapshot } from "../scripts/verify-snapshot.mjs";
 import { buildSummary } from "../crawler/summary.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
@@ -1092,4 +1092,161 @@ test("the publish gate names silently empty sources without blocking the release
   const { accepted, warnings } = evaluateSnapshot(next, { projects: [{ url: "https://fixture.test/notice/1" }] });
   assert.equal(accepted, true);
   assert.deepEqual(warnings, ["焦作市公共资源交易中心 本轮读到 0 条，请人工核对列表页"]);
+});
+
+// ---------------------------------------------------------------------------
+// 来源入口：一个来源可以有多个列表/栏目入口
+// ---------------------------------------------------------------------------
+
+const multiEntrySource = {
+  id: 98,
+  key: "duokou",
+  name: "多口市公共资源交易中心",
+  entry: "https://duokou.test/",
+  listEntry: "https://duokou.test/jyxx/001001/moreinfojy.html",
+  scanEntry: "https://duokou.test/",
+  region: "河南省 · 多口市",
+  type: "公共资源交易中心",
+  adapter: "generic-html",
+  detailPattern: /\/jyxx\/001001\/001001001\/20\d{6}\//i,
+};
+
+function listPage(links) {
+  return `<ul>${links.map(({ href, title }) => `<li><a href="${href}">${title}</a> <span>2026-08-20</span></li>`).join("")}</ul>`;
+}
+
+function detailPage(title) {
+  return `<h2>${title}</h2><p>项目总投资为 1000 万元。</p><p>投标截止时间：2026年8月30日09时30分。</p>`;
+}
+
+async function scanWith(source, pages, { now = new Date("2026-08-22T09:00:00+08:00") } = {}) {
+  return scanSource(source, now, {
+    fetchPage: async (_source, url) => {
+      if (!(url in pages)) throw new Error(`${url} 抓取失败：HTTP 404`);
+      return pages[url];
+    },
+    fetchDetail: async (_source, entry) => detailPage(entry.title),
+  });
+}
+
+test("resolveScanEntries keeps one entry compatible and marks extras optional", () => {
+  const single = resolveScanEntries({ listEntry: "https://a.test/list", detailPattern: /x/ });
+  assert.equal(single.length, 1);
+  assert.equal(single[0].url, "https://a.test/list");
+  assert.equal(single[0].required, true);
+  assert.equal(single[0].kind, "招标公告");
+
+  const many = resolveScanEntries({
+    detailPattern: /x/,
+    scanEntries: ["https://a.test/", { url: "https://a.test/plan", kind: "招标计划", detailPattern: /plan/ }],
+  });
+  assert.equal(many[0].required, true);
+  assert.equal(many[1].required, false, "补充入口不能拖垮主入口");
+  assert.equal(many[1].kind, "招标计划");
+  assert.equal(String(many[1].detailPattern), "/plan/", "补充入口可以有自己的详情页规则");
+});
+
+// 焦作、安阳、鹤壁、许昌原来只扫首页，首页挂不下的监理公告全部漏掉。
+test("a source scans every declared entry, not just the first one", async () => {
+  const source = {
+    ...multiEntrySource,
+    scanEntries: ["https://duokou.test/", "https://duokou.test/jyxx/001001/moreinfojy.html"],
+  };
+  const result = await scanWith(source, {
+    "https://duokou.test/": listPage([{ href: "/jyxx/001001/001001001/20260820/aaa.html", title: "多口县甲工程监理标段招标公告" }]),
+    "https://duokou.test/jyxx/001001/moreinfojy.html": listPage([
+      { href: "/jyxx/001001/001001001/20260820/aaa.html", title: "多口县甲工程监理标段招标公告" },
+      { href: "/jyxx/001001/001001001/20260820/bbb.html", title: "多口县乙工程监理标段招标公告" },
+    ]),
+  });
+
+  assert.equal(result.read, 2, "两个入口的公告要合并，重复的去掉");
+  assert.deepEqual(result.projects.map((project) => project.name).sort(), ["多口县乙工程监理标段", "多口县甲工程监理标段"]);
+});
+
+// 补充入口地址写错时，主入口已经抓到的公告不能跟着一起丢。
+test("a broken extra entry degrades to an issue instead of failing the whole source", async () => {
+  const source = {
+    ...multiEntrySource,
+    scanEntries: ["https://duokou.test/", "https://duokou.test/typo.html"],
+  };
+  const result = await scanWith(source, {
+    "https://duokou.test/": listPage([{ href: "/jyxx/001001/001001001/20260820/aaa.html", title: "多口县甲工程监理标段招标公告" }]),
+  });
+
+  assert.equal(result.read, 1);
+  assert.equal(result.projects.length, 1, "主入口的公告必须保住");
+  const issue = result.issues.find((item) => item.level === "入口不可用");
+  assert.ok(issue, "坏掉的补充入口要留下告警");
+  assert.equal(issue.url, "https://duokou.test/typo.html");
+});
+
+// 主入口本身挂掉仍然按整源失败处理，这条原本就是对的，不能改坏。
+test("a broken primary entry still fails the whole source", async () => {
+  const source = { ...multiEntrySource, scanEntries: ["https://duokou.test/gone.html", "https://duokou.test/"] };
+  await assert.rejects(
+    () => scanWith(source, { "https://duokou.test/": listPage([]) }),
+    /gone\.html/,
+  );
+});
+
+// 三门峡的监理只出现在「招标计划」栏目，只有声明要收的入口才放行。
+test("招标计划 is only collected from an entry that declares it", async () => {
+  const planLink = { href: "/jyxx/001001/001001013/20260821/ccc.html", title: "多口县丙工程监理服务招标计划" };
+  const noticeLink = { href: "/jyxx/001001/001001001/20260820/aaa.html", title: "多口县甲工程监理标段招标公告" };
+  const pages = {
+    "https://duokou.test/": listPage([noticeLink, planLink]),
+    "https://duokou.test/plan.html": listPage([planLink]),
+  };
+
+  // 默认入口：招标计划仍然被当噪音排除。
+  const withoutPlans = await scanWith({ ...multiEntrySource, detailPattern: /\/jyxx\/001001\/\d+\/20\d{6}\//i }, pages);
+  assert.deepEqual(withoutPlans.projects.map((project) => project.noticeType), ["招标公告"]);
+
+  // 声明 kind: "招标计划" 的补充入口才收，并且必须带上类型标记。
+  const withPlans = await scanWith({
+    ...multiEntrySource,
+    scanEntries: [
+      "https://duokou.test/",
+      { url: "https://duokou.test/plan.html", kind: "招标计划", detailPattern: /\/jyxx\/001001\/001001013\/20\d{6}\//i },
+    ],
+  }, pages);
+  const plan = withPlans.projects.find((project) => project.noticeType === "招标计划");
+  assert.ok(plan, "声明后必须收到招标计划");
+  assert.match(plan.name, /多口县丙工程监理服务/);
+  assert.equal(withPlans.projects.filter((project) => project.noticeType === "招标公告").length, 1);
+});
+
+test("excludedTitlePattern only lets 招标计划 through for plan entries", () => {
+  assert.equal(excludedTitlePattern("招标公告").test("某工程监理招标计划"), true);
+  assert.equal(excludedTitlePattern("招标计划").test("某工程监理招标计划"), false);
+  // 中标、结果、变更这些噪音在两种入口下都要继续排除。
+  for (const kind of ["招标公告", "招标计划"]) {
+    for (const noise of ["监理中标结果公告", "监理项目中标候选人公示", "监理项目变更公告", "监理合同信息"]) {
+      assert.equal(excludedTitlePattern(kind).test(noise), true, `${kind} / ${noise}`);
+    }
+  }
+});
+
+// 配置回归：四个原来只扫首页的来源必须真的补上了列表页。
+test("the four homepage-only sources now also scan their announcement list page", () => {
+  const expected = {
+    "安阳市公共资源交易中心": "https://ggzy.anyang.gov.cn/ayggzy/jyxx/001001/001001002/tradelist.html",
+    "鹤壁市公共资源交易中心": "https://ggzy.hebi.gov.cn/jyxx/006001/006001001/transaction_infos.html?cnum=006001001",
+    "焦作市公共资源交易中心": "https://ggzy.jiaozuo.gov.cn/jyxx/006001/006001001/project.html",
+    "许昌市公共资源交易中心": "https://ggzy.xuchang.gov.cn/jyxx/jyxx.html",
+  };
+  for (const [name, listUrl] of Object.entries(expected)) {
+    const source = SOURCE_DEFINITIONS.find((item) => item.name === name);
+    const urls = resolveScanEntries(source).map((entry) => entry.url);
+    assert.ok(urls.includes(source.entry), `${name} 仍然扫首页`);
+    assert.ok(urls.includes(listUrl), `${name} 缺少招标公告列表页入口`);
+  }
+
+  const sanmenxia = SOURCE_DEFINITIONS.find((item) => item.name === "三门峡市公共资源交易中心");
+  const plan = resolveScanEntries(sanmenxia).find((entry) => entry.kind === "招标计划");
+  assert.ok(plan, "三门峡要收招标计划");
+  assert.equal(plan.required, false, "推断出来的地址必须是非必需入口");
+  assert.ok(plan.detailPattern.test("/jyxx/001001/001001013/20260821/d947913c.html"));
+  assert.equal(plan.detailPattern.test("/jyxx/001001/001001001/20260821/d947913c.html"), false);
 });
