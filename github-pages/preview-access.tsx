@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { RadarSnapshot } from "../app/page";
 import {
   decryptPreviewJson,
@@ -30,6 +30,8 @@ const databaseName = "biaokankan-preview-access-v1";
 const storeName = "credentials";
 const credentialId = "active";
 const encryptedDataUrl = `${import.meta.env.BASE_URL}data/radar.enc.json`;
+const checkingProgressDelayMs = 300;
+const gateExitDurationMs = 200;
 
 function openCredentialDatabase() {
   return new Promise<IDBDatabase>((resolve, reject) => {
@@ -106,14 +108,38 @@ function requireRadarSnapshot(value: unknown): RadarSnapshot {
   return snapshot as RadarSnapshot;
 }
 
+function PreviewBrand() {
+  return <div className="preview-lock-brand"><span>标</span><div><strong>标看看</strong><small>监理标讯助手</small></div></div>;
+}
+
 export function PreviewAccess({ children }: { children: (snapshot: RadarSnapshot) => ReactNode }) {
   const [state, setState] = useState<AccessState>("checking");
   const [envelope, setEnvelope] = useState<PreviewEnvelope | null>(null);
   const [snapshot, setSnapshot] = useState<RadarSnapshot | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showCheckingProgress, setShowCheckingProgress] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const passwordId = useId();
   const passwordRef = useRef<HTMLInputElement>(null);
+  const exitTimerRef = useRef<number | null>(null);
+
+  const finishUnlock = useCallback((nextSnapshot: RadarSnapshot) => {
+    setSnapshot(nextSnapshot);
+    setIsExiting(true);
+    if (exitTimerRef.current !== null) window.clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = window.setTimeout(() => setState("unlocked"), gateExitDurationMs);
+  }, []);
+
+  useEffect(() => () => {
+    if (exitTimerRef.current !== null) window.clearTimeout(exitTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (state !== "checking" || isExiting) return;
+    const timer = window.setTimeout(() => setShowCheckingProgress(true), checkingProgressDelayMs);
+    return () => window.clearTimeout(timer);
+  }, [isExiting, state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,7 +160,7 @@ export function PreviewAccess({ children }: { children: (snapshot: RadarSnapshot
 
         try {
           const restored = requireRadarSnapshot(await decryptPreviewJson(nextEnvelope, stored.key));
-          if (!cancelled) { setSnapshot(restored); setState("unlocked"); }
+          if (!cancelled) finishUnlock(restored);
         } catch {
           try { await deleteStoredCredential(); } catch { /* 解密失败后继续显示解锁页 */ }
           if (!cancelled) setState("locked");
@@ -144,7 +170,7 @@ export function PreviewAccess({ children }: { children: (snapshot: RadarSnapshot
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [finishUnlock]);
 
   useEffect(() => {
     if (state !== "locked") return;
@@ -162,8 +188,7 @@ export function PreviewAccess({ children }: { children: (snapshot: RadarSnapshot
       const decrypted = requireRadarSnapshot(await decryptPreviewJson(envelope, key));
       try { await saveStoredCredential(key, envelope.keyVersion); } catch { /* 私密模式可能不允许持久化，本次仍可使用 */ }
       setPassword("");
-      setSnapshot(decrypted);
-      setState("unlocked");
+      finishUnlock(decrypted);
     } catch {
       setPassword("");
       setError("密码不正确，请重新输入。");
@@ -171,31 +196,44 @@ export function PreviewAccess({ children }: { children: (snapshot: RadarSnapshot
     }
   };
 
-  if (state === "unlocked" && snapshot) return children(snapshot);
+  if (state === "unlocked" && snapshot) {
+    return <div className="preview-access-content">{children(snapshot)}</div>;
+  }
+
+  if (state === "checking") return <main className="preview-lock-shell">
+    <section className={`preview-access-stage ${isExiting ? "preview-access-exit" : ""}`} aria-busy="true" aria-label="正在进入标看看">
+      <PreviewBrand />
+      {showCheckingProgress && !isExiting && <div className="preview-checking-progress" role="status">
+        <span className="preview-checking-dots" aria-hidden="true"><i /><i /><i /></span>
+        <span>正在进入…</span>
+      </div>}
+    </section>
+  </main>;
+
+  const unavailable = state === "unavailable";
 
   return <main className="preview-lock-shell">
-    <section className="preview-lock-card" aria-busy={state === "checking" || state === "unlocking"}>
-      <div className="preview-lock-brand"><span>标</span><div><strong>标看看</strong><small>监理标讯助手</small></div></div>
+    <section className={`preview-lock-card ${isExiting ? "preview-access-exit" : ""}`} aria-busy={state === "unlocking"}>
+      <PreviewBrand />
       <p className="preview-lock-kicker">封闭试用</p>
-      <h1>{state === "unavailable" ? "暂时无法读取加密数据" : "输入临时访问密码"}</h1>
-      <p className="preview-lock-copy">{state === "unavailable" ? "请稍后重试；系统不会显示未加密的备用数据。" : "解锁后，此浏览器会安全记住 30 天。"}</p>
-      {state === "checking" ? <div className="preview-lock-progress" role="status">正在检查本地凭证…</div>
-        : state === "unavailable" ? <button className="preview-lock-retry" type="button" onClick={() => window.location.reload()}>重新加载</button>
-          : <form onSubmit={unlock}>
-            <label htmlFor={passwordId}>访问密码</label>
-            <input
-              id={passwordId}
-              ref={passwordRef}
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              disabled={state === "unlocking"}
-              onChange={(event) => setPassword(event.target.value)}
-              aria-describedby={error ? `${passwordId}-error` : undefined}
-            />
-            {error && <p id={`${passwordId}-error`} className="preview-lock-error" role="alert">{error}</p>}
-            <button type="submit" disabled={state === "unlocking" || !password}>{state === "unlocking" ? "正在解锁…" : "进入标看看"}</button>
-          </form>}
+      <h1>{unavailable ? "暂时无法读取加密数据" : "输入临时访问密码"}</h1>
+      <p className="preview-lock-copy">{unavailable ? "请稍后重试；系统不会显示未加密的备用数据。" : "解锁后，此浏览器会安全记住 30 天。"}</p>
+      {unavailable ? <button className="preview-lock-retry" type="button" onClick={() => window.location.reload()}>重新加载</button>
+        : <form onSubmit={unlock}>
+          <label htmlFor={passwordId}>访问密码</label>
+          <input
+            id={passwordId}
+            ref={passwordRef}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            disabled={state === "unlocking"}
+            onChange={(event) => setPassword(event.target.value)}
+            aria-describedby={error ? `${passwordId}-error` : undefined}
+          />
+          {error && <p id={`${passwordId}-error`} className="preview-lock-error" role="alert">{error}</p>}
+          <button type="submit" disabled={state === "unlocking" || !password}>{state === "unlocking" ? "正在解锁…" : "进入标看看"}</button>
+        </form>}
       <small className="preview-lock-note">新设备、无痕窗口、清除网站数据或密码版本更新后需要重新输入。</small>
     </section>
   </main>;
