@@ -51,7 +51,8 @@
 - 获得提交授权后，完成定向测试并创建单一、清晰的 commit。
 - 最终报告必须包含：分支名、测试结果、commit hash、涉及文件和已知限制。
 - `docs/README.md`、`docs/prd/README.md` 等共享索引只由集成窗口修改，功能窗口不得触碰。
-- 本仓库是 public；代码审核、安全评估、未修复漏洞和复盘材料不得提交，`docs/audit/` 仅用于仓库外本地归档。
+- 本仓库是 public；代码审核、安全评估、未修复漏洞和复盘材料不得提交，改为归档到私有仓库 `octopusgump/biaokankan-notes`（`docs/audit/` 已被 `.gitignore` 排除）。
+- 反之，`AGENTS.md`、`CLAUDE.md` 和 `docs/development/AI_GIT_COLLABORATION_WORKFLOW.md` 必须留在本 public 仓库：远程容器 Agent 只能从代码仓库读取规则。
 
 ### 4. 集成窗口
 

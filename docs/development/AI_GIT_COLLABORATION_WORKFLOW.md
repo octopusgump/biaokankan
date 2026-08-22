@@ -92,6 +92,7 @@ git show origin/main:docs/development/AI_GIT_COLLABORATION_WORKFLOW.md
 
 1. **一个任务对应一个分支、一个 worktree、一个明确负责人。**
 2. **一个 worktree 同一时间只有一个写入者。**另一个 AI 可以审核，但不能同时修改同一目录。
+   单 worktree 的远程容器 Agent 见第五节「远程容器的 worktree 例外」。
 3. 功能窗口不直接提交或推送集成发布分支。
 4. 审核通过的 Commit SHA 是交付单位，不以未提交工作区作为交付物。
 5. 只有集成窗口负责接收 Commit、处理集成、运行完整测试和发布。
@@ -186,6 +187,24 @@ git worktree add \
 ```
 
 创建完成后，功能窗口只打开 `../wt-example-task`。新窗口本身不能提供隔离，必须同时使用独立 worktree。
+
+#### 远程容器的 worktree 例外
+
+Claude Code 常运行在远程临时容器中，仓库在会话开始时克隆，`git worktree list`
+通常只有一个工作目录，且该容器内**只有这一个写入者**。本节的隔离要求防的是
+"两个窗口同时写同一目录"，这个风险在单容器单写入者的场景下不成立。
+
+因此，单 worktree 的远程容器 Agent 可以在同一个工作目录内**串行**切换分支，
+但必须同时满足：
+
+1. 同一时间只承担一个任务，不并行推进多个分支；
+2. 切换分支前工作区干净（`git status --short` 无输出），未提交的改动已 commit 并 push；
+3. 切换后立即报告新的分支、Commit 与基线；
+4. 需要同时对比两个分支时，用 `git worktree add --detach` 建**临时只读**目录，
+   用完 `git worktree remove` 删除，不在其中提交。
+
+不满足上述任一条时，回到通用规则：为每个任务建独立 worktree。
+本地 Agent 与人工窗口不适用本例外。
 
 ### 3. 记录任务归属
 
@@ -376,7 +395,11 @@ integration/publish-YYYYMMDD
 代码审核报告 / 未修复漏洞描述 / 安全评估 / 事故复盘 / 攻击路径 / 敏感运行信息
 ```
 
-这类材料由用户下载并在仓库外归档。仓库通过以下规则阻止新增审核材料：
+这类材料归档到私有仓库 `octopusgump/biaokankan-notes`，由 Agent 直接推送，
+不再依赖用户手工下载；目录约定 `audit/YYYY-MM-DD_主题.md`、`handoff/YYYY-MM-DD_主题.md`。
+规则、流程、PRD、设计与部署文档仍然只放本 public 仓库——远程容器 Agent
+只能从代码仓库读取规则，把规则放进私有笔记库会让它们读不到。
+本仓库通过以下规则阻止新增审核材料：
 
 ```gitignore
 /docs/audit/
@@ -447,7 +470,7 @@ Codex、Claude Code 和人工都可以提出修改，但不得同时直接编辑
 
 必须遵守以下规则：
 
-1. 一个任务对应一个分支、一个 worktree、一个明确写入者；
+1. 一个任务对应一个分支、一个 worktree、一个明确写入者（单 worktree 的远程容器按第五节「远程容器的 worktree 例外」串行切换分支）；
 2. 不得与 Codex 或其他窗口同时写入同一个 worktree 或分支；
 3. 不得覆盖、暂存、提交、还原、stash 或清理其他任务的修改；
 4. 未经用户明确授权，不执行 commit、push、merge、cherry-pick 或发布（入口文件中已记录的常设 push 授权除外，其范围仅限自有独占分支）；
