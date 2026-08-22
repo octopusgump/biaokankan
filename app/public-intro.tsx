@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { normalizeProjectTimeFields } from "../shared/project-time.mjs";
 import { siteConfig } from "./site-config";
 
@@ -17,7 +17,7 @@ type PreviewProject = {
   source: string;
 };
 
-type PreviewSnapshot = {
+export type PreviewSnapshot = {
   generatedAt: string | null;
   projects: PreviewProject[];
   sources: unknown[];
@@ -146,12 +146,20 @@ function ProductPreview({ snapshot, state }: { snapshot: PreviewSnapshot | null;
   );
 }
 
-export function PublicIntro() {
-  const [snapshot, setSnapshot] = useState<PreviewSnapshot | null>(null);
-  const [previewState, setPreviewState] = useState<PreviewState>("loading");
+export function PublicIntro({ initialSnapshot = null }: { initialSnapshot?: PreviewSnapshot | null }) {
+  const [fetchedSnapshot, setFetchedSnapshot] = useState<PreviewSnapshot | null>(null);
+  const [fetchedPreviewState, setFetchedPreviewState] = useState<PreviewState>("loading");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileNavigationRef = useRef<HTMLDivElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const snapshot = initialSnapshot ?? fetchedSnapshot;
+  const previewState = initialSnapshot
+    ? (initialSnapshot.projects.length ? "ready" : "empty")
+    : fetchedPreviewState;
 
   useEffect(() => {
+    if (initialSnapshot) return;
+
     const controller = new AbortController();
     void (async () => {
       try {
@@ -159,22 +167,31 @@ export function PublicIntro() {
         if (!response.ok) throw new Error("snapshot unavailable");
         const data = await response.json() as PreviewSnapshot;
         if (!Array.isArray(data.projects) || !Array.isArray(data.sources)) throw new Error("invalid snapshot");
-        setSnapshot(data);
-        setPreviewState(data.projects.length ? "ready" : "empty");
+        setFetchedSnapshot(data);
+        setFetchedPreviewState(data.projects.length ? "ready" : "empty");
       } catch (error) {
-        if ((error as Error).name !== "AbortError") setPreviewState("error");
+        if ((error as Error).name !== "AbortError") setFetchedPreviewState("error");
       }
     })();
     return () => controller.abort();
-  }, []);
+  }, [initialSnapshot]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileMenuOpen(false);
+      if (event.key !== "Escape") return;
+      setMobileMenuOpen(false);
+      window.requestAnimationFrame(() => mobileMenuButtonRef.current?.focus());
+    };
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!mobileNavigationRef.current?.contains(event.target as Node)) setMobileMenuOpen(false);
     };
     document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+    };
   }, [mobileMenuOpen]);
 
   const metrics = [
@@ -195,8 +212,9 @@ export function PublicIntro() {
           <a href="#how-it-works">工作方式</a>
           <a href="#product-boundary">产品边界</a>
         </nav>
-        <div className="public-mobile-navigation">
+        <div className="public-mobile-navigation" ref={mobileNavigationRef}>
           <button
+            ref={mobileMenuButtonRef}
             type="button"
             className="public-mobile-menu-button"
             aria-expanded={mobileMenuOpen}

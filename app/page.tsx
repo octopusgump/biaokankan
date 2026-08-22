@@ -45,6 +45,7 @@ type DailySummary = { summaryVersion: 2; date: string; generatedAt: string; newP
 export type RadarSnapshot = { schemaVersion: number; mode: "live"; generatedAt: string | null; projects: Project[]; sources: Source[]; run: ScanRun | null; summary: DailySummary | null; errors: ScanError[] };
 
 const sortStorageKey = "biaokankan-project-sort-v1";
+const mobileWorkbenchQuery = "(max-width: 833px), (max-width: 960px) and (max-height: 520px) and (orientation: landscape)";
 const sortOptions: Array<{ value: SortMode; label: string }> = [
   { value: "deadline", label: "截止时间由近到远" },
   { value: "discovered", label: "首次发现最新" },
@@ -246,6 +247,8 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
   const [run, setRun] = useState<ScanRun | null>(null);
   const [errors, setErrors] = useState<ScanError[]>([]); const [generatedAt, setGeneratedAt] = useState<string | null>(null); const [dataState, setDataState] = useState<DataState>("loading");
   const [reload, setReload] = useState(0); const [mobileNav, setMobileNav] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => { let cancelled = false; (async () => { setDataState("loading"); try {
     let snapshot = initialSnapshot;
@@ -281,6 +284,41 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [dataState]);
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const mobileViewport = window.matchMedia(mobileWorkbenchQuery);
+    const syncSidebarAccessibility = () => {
+      const hidden = mobileViewport.matches && !mobileNav;
+      sidebar.toggleAttribute("inert", hidden);
+      if (hidden) sidebar.setAttribute("aria-hidden", "true");
+      else sidebar.removeAttribute("aria-hidden");
+    };
+    syncSidebarAccessibility();
+    mobileViewport.addEventListener("change", syncSidebarAccessibility);
+    return () => {
+      mobileViewport.removeEventListener("change", syncSidebarAccessibility);
+      sidebar.removeAttribute("inert");
+      sidebar.removeAttribute("aria-hidden");
+    };
+  }, [mobileNav]);
+
+  useEffect(() => {
+    if (!mobileNav) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMobileNav(false);
+      window.requestAnimationFrame(() => mobileMenuButtonRef.current?.focus());
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileNav]);
 
   const { selected, detailState } = useMemo<{ selected: Project | null; detailState: DetailState }>(() => {
     if (!detailFromQuery) return { selected: null, detailState: "inactive" };
@@ -327,10 +365,10 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
 
   const openProject = (project: Project) => { window.location.assign(appHref(`/radar/project?id=${project.id}`)); };
 
-  return <main className="app-shell"><aside className={`sidebar ${mobileNav ? "open" : ""}`}><a className="brand" href={appHref("/")}><div className="brand-mark">标</div><div><strong>标看看</strong><span>监理标讯助手</span></div></a><nav>
-    <a className={`nav-item ${view === "radar" ? "active" : ""}`} href={appHref("/radar")}><i>01</i><span><b>项目雷达</b><small>真实项目与截止</small></span></a>
-    <a className={`nav-item ${view === "admin" ? "active" : ""}`} href={appHref("/radar/admin")}><i>02</i><span><b>系统管理</b><small>信息源与异常</small></span></a>
-  </nav></aside><section className="workspace"><header className="mobile-header"><div className="brand-mark">标</div><strong>标看看</strong><button onClick={() => setMobileNav(!mobileNav)}>菜单</button></header>
+  return <main className="app-shell"><aside ref={sidebarRef} id="workbench-sidebar" className={`sidebar ${mobileNav ? "open" : ""}`}><a className="brand" href={appHref("/")} onClick={() => setMobileNav(false)}><div className="brand-mark">标</div><div><strong>标看看</strong><span>监理标讯助手</span></div></a><nav>
+    <a className={`nav-item ${view === "radar" ? "active" : ""}`} href={appHref("/radar")} onClick={() => setMobileNav(false)}><i>01</i><span><b>项目雷达</b><small>真实项目与截止</small></span></a>
+    <a className={`nav-item ${view === "admin" ? "active" : ""}`} href={appHref("/radar/admin")} onClick={() => setMobileNav(false)}><i>02</i><span><b>系统管理</b><small>信息源与异常</small></span></a>
+  </nav></aside>{mobileNav && <button type="button" className="sidebar-scrim" aria-label="关闭主菜单" onClick={() => setMobileNav(false)} />}<section className="workspace"><header className="mobile-header"><div className="brand-mark">标</div><strong>标看看</strong><button ref={mobileMenuButtonRef} type="button" aria-expanded={mobileNav} aria-controls="workbench-sidebar" aria-label={mobileNav ? "关闭主菜单" : "打开主菜单"} onClick={() => setMobileNav((open) => !open)}>菜单</button></header>
   {detailFromQuery ? selected && detailState === "ready" ? <ProjectDetail project={selected} onBack={() => { window.location.assign(appHref("/radar")); }} onOpenOriginal={openOriginal} /> : <ProjectDetailMessage state={detailState === "inactive" || detailState === "ready" ? "loading" : detailState} onBack={() => { window.location.assign(appHref("/radar")); }} onRetry={() => setReload((n) => n + 1)} /> : view === "radar" ? <>
     <header className="topbar"><div><p className="eyebrow">{currentDate}</p><h1>项目雷达</h1><p className="subtitle">集中查看真实发现的监理项目，优先处理临近截止机会。</p></div><div className={`scan-status static ${stale ? "warning" : ""}`}><span className="health-dot" /><b>{dataState === "loading" ? "正在读取" : dataState === "unavailable" ? "数据不可用" : dataState === "never" ? "等待首次扫描" : stale ? "部分来源异常" : "扫描正常"}</b><small>{scanMeta}</small></div></header>
     {stale && <div className="stale-banner"><strong>当前显示上次成功扫描数据</strong><span>扫描时间：{run?.finishedAt}。部分来源本次访问失败，请以原公告为准。</span></div>}
@@ -340,17 +378,17 @@ export function RadarApp({ initialView = "radar", detailFromQuery = false, initi
   </> : <AdminCenter tab={adminTab} setTab={setAdminTab} sources={sources} errors={errors} run={run} />}</section></main>;
 }
 
-export default function LandingPage() {
-  return <><PublicIntro /><PublicFooter /></>;
+export default function LandingPage({ initialSnapshot = null }: { initialSnapshot?: RadarSnapshot | null }) {
+  return <><PublicIntro initialSnapshot={initialSnapshot} /><PublicFooter /></>;
 }
 
 function ProjectRow({ project, onOpen, onOpenOriginal }: { project: Project; onOpen: () => void; onOpenOriginal: () => void }) {
   const linkLabel = project.linkStatus === "source_unavailable" ? "链接不可用" : project.linkStatus === "original_unavailable" ? "原公告不可用 · 查看上级入口" : "查看原公告 ↗";
-  return <div className="table-row data-row"><ProjectTimes project={project} /><div className="project-name"><button onClick={onOpen}>{project.name}</button><span>{project.section} · {project.category}</span>{project.related && <UpdateIndicator />}</div><div className="cell"><strong>{project.investment.replace(" 万元", "")}</strong><span>{project.investment.includes("万元") ? "万元" : "需人工确认"}</span></div><div className="cell"><strong>{project.client}</strong><span>{project.clientExtra || project.region}</span></div><div className="cell"><strong>{project.agency}</strong><span>招标代理机构</span></div><div className="source-cell"><strong>{project.source}</strong><button className={project.linkStatus && project.linkStatus !== "available" ? "link-warning" : ""} onClick={onOpenOriginal}>{linkLabel}</button></div></div>;
+  return <div className="table-row data-row"><ProjectTimes project={project} /><div className="project-name"><button onClick={onOpen}>{project.name}</button><span>{project.section} · {project.category}</span>{project.related && <UpdateIndicator />}</div><div className="cell"><strong>{project.investment.replace(" 万元", "")}</strong><span>{project.investment.includes("万元") ? "万元" : "需人工确认"}</span></div><div className="cell"><strong>{project.client}</strong><span>{project.clientExtra || project.region}</span></div><div className="cell"><strong>{project.agency}</strong><span>招标代理机构</span></div><div className="source-cell"><strong title={project.source}>{project.source}</strong><button className={project.linkStatus && project.linkStatus !== "available" ? "link-warning" : ""} onClick={onOpenOriginal}>{linkLabel}</button></div></div>;
 }
 
 function MobileProject({ project, onOpen, onOpenOriginal }: { project: Project; onOpen: () => void; onOpenOriginal: () => void }) {
-  return <article className="mobile-project-card"><ProjectTimes project={project} /><button className="mobile-project-title" onClick={onOpen}>{project.name}</button><p>{project.section} · {project.category}</p>{project.related && <UpdateIndicator />}<dl><div><dt>总投资</dt><dd>{project.investment}</dd></div><div><dt>招标人</dt><dd>{project.client}</dd></div><div><dt>代理机构</dt><dd>{project.agency}</dd></div><div><dt>信息来源</dt><dd>{project.source}</dd></div></dl><div className="mobile-actions"><button onClick={onOpen}>查看详情</button><button onClick={onOpenOriginal}>{project.linkStatus === "available" || !project.linkStatus ? "原公告 ↗" : "核验链接"}</button></div></article>;
+  return <article className="mobile-project-card"><ProjectTimes project={project} /><button className="mobile-project-title" onClick={onOpen}>{project.name}</button><p>{project.section} · {project.category}</p>{project.related && <UpdateIndicator />}<dl><div><dt>总投资</dt><dd>{project.investment}</dd></div><div><dt>招标人</dt><dd>{project.client}</dd></div><div><dt>代理机构</dt><dd>{project.agency}</dd></div><div><dt>信息来源</dt><dd>{project.source}</dd></div></dl><div className="mobile-actions"><button onClick={onOpenOriginal}>{project.linkStatus === "available" || !project.linkStatus ? "打开原公告 ↗" : "核验公告入口"}</button></div></article>;
 }
 
 function ProjectDetail({ project, onBack, onOpenOriginal }: { project: Project; onBack: () => void; onOpenOriginal: (project: Project) => void }) {
@@ -393,7 +431,7 @@ function SourceStatus({ source }: { source: Source }) {
 }
 
 function SourceManager({ sources }: { sources: Source[] }) {
-  return <section className="panel-card admin-panel"><div className="admin-heading"><div><h2>信息源管理</h2><p>{sources.length} 个已适配来源；公开页面只读，新来源需完成抓取适配、本地测试和 GitHub 发布后才会显示</p></div></div><div className="source-table"><div className="source-row source-head"><span>网站名称 / 入口</span><span>地区</span><span>来源类型</span><span>最后扫描</span><span>状态</span><span>公告</span></div>{sources.map((source) => <div className="source-row" key={source.id}><div><strong>{source.name}</strong><a href={source.entry} target="_blank" rel="noreferrer">主页：{source.entry}</a>{source.listEntry && <a href={source.listEntry} target="_blank" rel="noreferrer">列表：{source.listEntry}</a>}{source.sourceNote && <small>{source.sourceNote}</small>}</div><span>{source.region}</span><span>{source.type}</span><div><strong>{source.lastScan || "尚未扫描"}</strong><small>读取 {source.read || 0} 条</small></div><SourceStatus source={source} /><span>{source.found} 条</span></div>)}</div></section>;
+  return <section className="panel-card admin-panel"><div className="admin-heading"><div><h2>信息源管理</h2><p>{sources.length} 个已适配来源；公开页面只读，新来源需完成抓取适配、本地测试和 GitHub 发布后才会显示</p></div></div><div className="source-table"><div className="source-row source-head"><span>网站名称 / 入口</span><span>地区</span><span>来源类型</span><span>最后扫描</span><span>状态</span><span>公告</span></div>{sources.map((source) => <div className="source-row" key={source.id}><div><strong>{source.name}</strong><a href={source.entry} target="_blank" rel="noreferrer">主页：{source.entry}</a>{source.listEntry && <a href={source.listEntry} target="_blank" rel="noreferrer">列表：{source.listEntry}</a>}{source.sourceNote && <small>{source.sourceNote}</small>}</div><span>{source.region}</span><span>{source.type}</span><div><strong>{source.lastScan || "尚未扫描"}</strong><small>读取 {source.read || 0} 条</small></div><SourceStatus source={source} /><span>{source.found} 条</span></div>)}</div><div className="source-cards">{sources.map((source) => <article key={source.id}><div><strong>{source.name}</strong><a href={source.entry} target="_blank" rel="noreferrer" title={source.entry}>打开来源主页 ↗</a>{source.listEntry && <a href={source.listEntry} target="_blank" rel="noreferrer" title={source.listEntry}>打开公告列表 ↗</a>}{source.sourceNote && <small>{source.sourceNote}</small>}</div><SourceStatus source={source} /><dl><div><dt>最后扫描</dt><dd>{source.lastScan || "尚未扫描"}</dd></div><div><dt>本次读取</dt><dd>{source.read || 0} 条</dd></div><div><dt>地区</dt><dd>{source.region}</dd></div><div><dt>来源类型</dt><dd>{source.type}</dd></div><div><dt>公告</dt><dd>{source.found} 条</dd></div></dl></article>)}</div></section>;
 }
 
 function ErrorLog({ errors }: { errors: ScanError[] }) {

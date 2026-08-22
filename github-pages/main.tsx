@@ -21,7 +21,7 @@ function pageForRoute(snapshot: RadarSnapshot | null) {
       ? <RadarApp initialView="radar" detailFromQuery initialSnapshot={snapshot} />
       : pathname === "/radar"
         ? <RadarApp initialView="radar" initialSnapshot={snapshot} />
-        : <Home />;
+        : <Home initialSnapshot={snapshot} />;
 }
 
 createRoot(root).render(
