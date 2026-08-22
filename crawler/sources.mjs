@@ -287,17 +287,9 @@ async function scanKaifeng(source, now) {
   const listUrls = [source.listEntry, "https://www.kfsggzyjyw.cn/jzbgg/index_2.jhtml"];
   const pages = await Promise.all(listUrls.map((url) => fetchText(url)));
   const entries = dedupeBy(
-    [
-      {
-        url: "https://www.kfsggzyjyw.cn/jzbtxx/81223.jhtml",
-        title: "通许县宏达大道（人民路-第一污水处理厂）排水管网改造工程-第二标段招标公告",
-        text: "",
-        publishedAt: "2026-08-04",
-      },
-      ...pages.flatMap((html, index) => extractAnchors(html, listUrls[index]))
-        .filter((item) => /\/jzb[^/]*\/\d+\.jhtml$/i.test(new URL(item.url).pathname))
-        .map(withPublishedDate),
-    ],
+    pages.flatMap((html, index) => extractAnchors(html, listUrls[index]))
+      .filter((item) => /\/jzb[^/]*\/\d+\.jhtml$/i.test(new URL(item.url).pathname))
+      .map(withPublishedDate),
     (item) => item.url,
   ).filter((item) => withinDays(item.publishedAt, LOOKBACK_DAYS, now));
   return scanHtmlEntries(source, entries, now);

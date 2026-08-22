@@ -1,16 +1,26 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { deadlinePresentation, extractAnchors, extractProject, isSupervisionText, retainProjectWithLatestLinkState } from "../crawler/core.mjs";
+import { collapseDuplicates, deadlinePresentation, extractAnchors, extractProject, isSupervisionText, projectIdentity, retainProjectWithLatestLinkState, supervisionScope, withinRetention } from "../crawler/core.mjs";
 import { buildSummary } from "../crawler/summary.mjs";
 import { SOURCE_DEFINITIONS } from "../crawler/sources.mjs";
-import { documentAcquirePresentation, normalizeProjectTimeFields } from "../shared/project-time.mjs";
+import { classifyBidDeadline, documentAcquirePresentation, normalizeProjectTimeFields } from "../shared/project-time.mjs";
 
 const source = {
   name: "开封市公共资源交易中心",
   type: "公共资源交易中心",
   region: "河南省 · 开封市 · 通许县",
 };
+
+function extractSentence(sentence, title = "截止时间语义测试监理项目") {
+  return extractProject({
+    title,
+    html: `<h2>${title}</h2><p>${sentence}</p>`,
+    url: `https://example.test/${encodeURIComponent(sentence)}`,
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+}
 
 test("extracts the PRD sample fields without guessing", () => {
   const html = `
@@ -38,7 +48,7 @@ test("extracts the PRD sample fields without guessing", () => {
   assert.equal(project.section, "第二标段");
   assert.equal(project.investment, "6,961.37 万元");
   assert.equal(project.deadline, "2026-08-25 09:30");
-  assert.equal(project.deadlineState, "normal");
+  assert.equal(project.deadlineState, "urgent");
   assert.equal(project.agency, "河南省开兴工程管理咨询有限公司");
   assert.equal(project.originalUrl, "http://www.kfsggzyjyw.cn/jzbtxx/81223.jhtml");
   assert.equal(project.linkStatus, "available");
@@ -64,6 +74,48 @@ test("extracts investments when punctuation and approximation qualifiers are cha
     assert.ok(project);
     assert.equal(project.investment, expected, sentence);
   }
+});
+
+test("rejects institution placeholders and strips trailing contact fields", () => {
+  const placeholderCases = [
+    {
+      sentence: "招标人：详见招标文件 招标代理机构：见招标文件。",
+      pending: ["招标人", "招标代理机构"],
+    },
+    {
+      sentence: "本项目招标人为：待定。",
+      pending: ["招标人"],
+    },
+    {
+      sentence: "招标人：/ 代理机构：无。",
+      pending: ["招标人", "招标代理机构"],
+    },
+  ];
+
+  for (const { sentence, pending } of placeholderCases) {
+    const project = extractSentence(sentence);
+    for (const field of pending) assert.equal(project.pendingFields.includes(field), true, `${sentence} ${field}`);
+    if (pending.includes("招标人")) assert.equal(project.client, "待核验", sentence);
+    if (pending.includes("招标代理机构")) assert.equal(project.agency, "待核验", sentence);
+  }
+
+  const cleaned = extractSentence("招标人：郑州市城建局 联系电话：0371-12345678 传真：0371-1 邮箱：test@example.test。");
+  assert.equal(cleaned.client, "郑州市城建局");
+  assert.equal(cleaned.pendingFields.includes("招标人"), false);
+
+  const validInstitutions = [
+    ["招标人：兴业银行股份有限公司郑州分行。", "client", "兴业银行股份有限公司郑州分行"],
+    ["招标人：尉氏县城市管理局 ( 尉氏县城市综合执法局 )。", "client", "尉氏县城市管理局 ( 尉氏县城市综合执法局 )"],
+    ["招标人：尉氏永达国家粮食储备库。", "client", "尉氏永达国家粮食储备库"],
+    ["招标代理机构：汇衡昊远项目管理咨询有限公司 联 系 人：王英杰。", "agency", "汇衡昊远项目管理咨询有限公司"],
+  ];
+  for (const [sentence, field, expected] of validInstitutions) {
+    assert.equal(extractSentence(sentence)[field], expected, sentence);
+  }
+
+  const polluted = extractSentence("招标代理机构：河南中晟工程管理有限公司 项目。");
+  assert.equal(polluted.agency, "待核验");
+  assert.equal(polluted.pendingFields.includes("招标代理机构"), true);
 });
 
 test("prefers the original announcement body over its list summary", () => {
@@ -96,6 +148,74 @@ test("prefers the original announcement body over its list summary", () => {
   assert.equal(project.pendingFields?.includes("投标截止时间"), false);
 });
 
+test("scores category evidence only from the title and project overview", () => {
+  const title = "渑池至淅川高速公路洛宁至嵩县段施工监理及试验检测招标公告";
+  const project = extractProject({
+    title,
+    html: `
+      <h2>${title}</h2>
+      <p>项目概况：本项目为高速公路交通工程，包含公路路基、互通及服务区施工监理。</p>
+      <p>投标截止时间：2026年8月24日09时30分。</p>
+      <h3>环境保护通用要求</h3>
+      <p>施工须执行水土保持、河道保护、水库周边管理要求。</p>
+    `,
+    url: "https://example.test/highway-category",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.category, "交通工程监理");
+});
+
+test("extracts numbered sections whether or not they start with 第", () => {
+  const cases = [
+    ["滑县智泊停车场建设项目（医院地下停车场）二标段监理招标公告", "二标段"],
+    ["水利枢纽工程SLZYQJL-1标段施工监理招标公告", "1标段"],
+    ["某水库除险加固工程第三标段监理招标公告", "第三标段"],
+  ];
+
+  for (const [title, expected] of cases) {
+    const project = extractProject({
+      title,
+      html: `<h2>${title}</h2><p>项目概况：本标段提供施工监理服务。</p>`,
+      url: `https://example.test/section/${encodeURIComponent(title)}`,
+      publishedAt: "2026-08-01",
+      source,
+    }, new Date("2026-08-01T00:00:00+08:00"));
+    assert.equal(project.section, expected, title);
+  }
+});
+
+test("does not infer a numbered supervision section from unrelated body headings", () => {
+  const title = "2026年上蔡县无量寺乡猪场提升改造项目监理标段、设计采购施工总承包（EPC）标段";
+  const project = extractProject({
+    title,
+    html: `<h2>${title}</h2><p>1标段：设计采购施工总承包。</p><p>2标段：设备采购。</p><p>本公告对应监理标段。</p>`,
+    url: "https://example.test/section/body-heading-regression",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.section, "监理标段");
+});
+
+test("selects the section declared as supervision instead of an EPC section mentioning supervision management", () => {
+  const title = "长葛市农村自来水提升项目工程总承包（EPC）及监理项目招标公告";
+  const project = extractProject({
+    title,
+    html: `
+      <h2>${title}</h2>
+      <p>第一标段：工程总承包（EPC）标段，并对工程项目进行监理管理管控。</p>
+      <p>第二标段：监理。</p>
+    `,
+    url: "https://example.test/section/epc-supervision-management",
+    publishedAt: "2026-08-01",
+    source,
+  }, new Date("2026-08-01T00:00:00+08:00"));
+
+  assert.equal(project.section, "第二标段");
+});
+
 test("normalizes fragmented dates and common deadline label variants", () => {
   const cases = [
     ["投标文件递交的截止时间（投标截止时间，下同）为 20 26 年 9 月 9 日上午 09 时 00 分。", "2026-09-09 09:00"],
@@ -120,6 +240,84 @@ test("normalizes fragmented dates and common deadline label variants", () => {
 
     assert.ok(project);
     assert.equal(project.deadline, expected, sentence);
+  }
+});
+
+test("uses one complete label set for confirmed and document-required deadlines", () => {
+  const confirmedCases = [
+    "投标文件提交截止时间：2026年8月24日09时30分。",
+    "投标文件上传截止时间：2026年8月24日09时30分。",
+  ];
+  for (const sentence of confirmedCases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, "2026-08-24 09:30", sentence);
+    assert.equal(project.bidDeadlineStatus, "confirmed", sentence);
+  }
+
+  const documentRequiredCases = [
+    "响应文件提交截止时间：详见招标文件。",
+    "响应文件递交截止时间：见招标文件。",
+  ];
+  for (const sentence of documentRequiredCases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, null, sentence);
+    assert.equal(project.bidDeadlineStatus, "document_required", sentence);
+  }
+});
+
+test("explicit document-required deadlines override every nearby date", () => {
+  const cases = [
+    "投标文件递交截止时间：详见招标文件（不早于2026年8月24日09时00分）。",
+    "投标截止时间详见招标文件，招标文件发售至2026年8月10日。",
+  ];
+
+  for (const sentence of cases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, null, sentence);
+    assert.equal(project.bidDeadlineStatus, "document_required", sentence);
+    assert.match(project.bidDeadlineEvidence, /见招标文件/, sentence);
+    assert.equal(project.pendingFields.includes("投标截止时间"), true, sentence);
+  }
+});
+
+test("keeps an explicit deadline when only its following location is in the tender document", () => {
+  const cases = [
+    ["7.2投标文件的上传/递交截止时间（投标截止时间: 2026年07月24日 9时00分）和地点见招标文件。", "2026-07-24 09:00"],
+    ["7.2投标文件的上传/递交截止时间为2026年8月11日 9时00分（北京时间），地点详见招标文件。", "2026-08-11 09:00"],
+  ];
+
+  for (const [sentence, expected] of cases) {
+    const project = extractProject({
+      title: "截止时间与递交地点语义测试监理项目",
+      html: `<h2>截止时间与递交地点语义测试监理项目</h2><p>${sentence}</p>`,
+      url: `https://example.test/deadline-location/${encodeURIComponent(sentence)}`,
+      publishedAt: "2026-07-01",
+      source,
+    }, new Date("2026-07-01T00:00:00+08:00"));
+    assert.equal(project.bidDeadline, expected, sentence);
+    assert.equal(project.bidDeadlineStatus, "confirmed", sentence);
+  }
+});
+
+test("P0-1 distinguishes earliest, latest, and nearest deadline strategies", () => {
+  const sentence = "报名自2026年8月3日开始，投标文件递交截止时间为2026年8月24日09时30分，补充文件于2026年8月30日发布。";
+  const project = extractSentence(sentence);
+  assert.equal(project.bidDeadline, "2026-08-24 09:30");
+  assert.equal(project.bidDeadlineStatus, "confirmed");
+});
+
+test("resolves deadline ranges and rejects ambiguous date alternatives", () => {
+  const cases = [
+    ["投标截止时间：自2026年8月5日起至2026年8月24日09时30分止。", "2026-08-24 09:30", "confirmed"],
+    ["投标文件递交截止时间为2026年8月24日09时30分，开标时间2026年8月24日09时30分，报名自2026年8月3日开始。", "2026-08-24 09:30", "confirmed"],
+    ["5.1 投标文件上传的截止时间：2026年08月24日09时30分（其中2026年08月10日前完成注册）。", "2026-08-24 09:30", "confirmed"],
+    ["投标截止时间：2026年8月24日09时30分或2026年8月25日09时30分，以交易系统显示为准。", null, "pending"],
+  ];
+
+  for (const [sentence, deadline, status] of cases) {
+    const project = extractSentence(sentence);
+    assert.equal(project.bidDeadline, deadline, sentence);
+    assert.equal(project.bidDeadlineStatus, status, sentence);
   }
 });
 
@@ -238,12 +436,20 @@ test("uses the eighteen confirmed public-resource sources", () => {
 
 test("deadline thresholds match the product rules", () => {
   const now = new Date("2026-08-20T09:30:00+08:00");
-  assert.equal(deadlinePresentation("2026-08-21 09:30", now).deadlineState, "danger");
-  assert.equal(deadlinePresentation("2026-08-23 09:30", now).deadlineState, "warning");
+  assert.equal(deadlinePresentation("2026-08-21 09:30", now).deadlineState, "urgent");
+  assert.equal(deadlinePresentation("2026-08-28 09:30", now).deadlineState, "reminder");
+  assert.equal(deadlinePresentation("2026-09-04 09:30", now).deadlineState, "normal");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now).deadlineState, "expired");
   assert.equal(deadlinePresentation(null, now).deadlineState, "pending");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now, "document_required").deadlineState, "pending");
   assert.equal(deadlinePresentation("2026-08-19 09:30", now, "document_required").remaining, "公告注明：见招标文件");
+
+  const sevenDayDeadline = "2026-08-27 09:30";
+  assert.equal(classifyBidDeadline(sevenDayDeadline, "confirmed", now).deadlineState, "urgent");
+  assert.equal(classifyBidDeadline(sevenDayDeadline, "confirmed", new Date(now.getTime() - 1)).deadlineState, "reminder");
+  const fourteenDayDeadline = "2026-09-03 09:30";
+  assert.equal(classifyBidDeadline(fourteenDayDeadline, "confirmed", now).deadlineState, "reminder");
+  assert.equal(classifyBidDeadline(fourteenDayDeadline, "confirmed", new Date(now.getTime() - 1)).deadlineState, "normal");
 });
 
 test("historical deadline fields migrate without breaking existing projects", () => {
@@ -270,6 +476,10 @@ test("daily summary only counts confirmed bid deadlines", () => {
     { id: 1, name: "已确认", section: "监理标段", bidDeadline: "2026-08-21 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-20 08:00" },
     { id: 2, name: "见招标文件", section: "监理标段", bidDeadline: null, bidDeadlineStatus: "document_required", documentAcquireDeadline: "2026-08-21 09:30", discoveredAt: "2026-08-20 08:00" },
     { id: 3, name: "未确认", section: "监理标段", bidDeadline: "2026-08-22 09:30", bidDeadlineStatus: "pending", documentAcquireDeadline: null, discoveredAt: "2026-08-20 08:00" },
+    { id: 4, name: "七天边界", section: "监理标段", bidDeadline: "2026-08-27 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
+    { id: 5, name: "八天提醒", section: "监理标段", bidDeadline: "2026-08-28 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
+    { id: 6, name: "十四天边界", section: "监理标段", bidDeadline: "2026-09-03 09:30", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
+    { id: 7, name: "十四天以外", section: "监理标段", bidDeadline: "2026-09-03 09:31", bidDeadlineStatus: "confirmed", documentAcquireDeadline: null, discoveredAt: "2026-08-19 08:00" },
   ];
   const summary = buildSummary(projects, {
     date: "2026-08-20",
@@ -278,9 +488,13 @@ test("daily summary only counts confirmed bid deadlines", () => {
     succeededSources: 18,
   }, now);
 
-  assert.equal(summary.expiringWithin3DaysCount, 1);
-  assert.deepEqual(summary.earliestProjects.map((project) => project.projectId), [1]);
-  assert.equal(summary.earliestProjects[0].bidDeadline, "2026-08-21 09:30");
+  assert.equal(summary.summaryVersion, 2);
+  assert.equal(summary.generatedAt, now.toISOString());
+  assert.equal(summary.urgentWithin7DaysCount, 2);
+  assert.equal(summary.reminderFrom8To14DaysCount, 2);
+  assert.deepEqual(summary.urgentProjects.map((project) => project.projectId), [1, 4]);
+  assert.deepEqual(summary.reminderProjects.map((project) => project.projectId), [5, 6]);
+  assert.equal(Object.hasOwn(summary, "expiringWithin3DaysCount"), false);
 });
 
 test("retained projects never keep a stale available-link claim after a failed verification", () => {
@@ -313,16 +527,150 @@ test("extracts and resolves list links deterministically", () => {
   assert.deepEqual(anchors, [{ url: "https://example.test/jzbtxx/81223.jhtml", title: "监理公告", text: "监理公告 2026-08-04" }]);
 });
 
+test("a lot explicitly scoped to other work never passes the supervision gate", () => {
+  const build = (title, body) => extractProject({
+    title,
+    html: `<p>${body}</p><p>招标人：某某单位</p>`,
+    url: `https://www.kfsggzyjyw.cn/jzbqx/${title.length}.jhtml`,
+    publishedAt: "2026-08-17",
+    source,
+  }, new Date("2026-08-21T00:00:00+08:00"));
+
+  assert.equal(build("某某项目EPC总承包及监理（第一标段：EPC总承包）招标公告", "招标范围：设计、采购、施工。"), null);
+
+  const supervision = build("某某项目EPC总承包及监理（第二标段：监理）招标公告", "招标范围：施工阶段监理服务。");
+  assert.ok(supervision);
+  assert.equal(supervision.supervisionConfidence, "explicit");
+  assert.ok(!supervision.pendingFields?.includes("监理标段范围"));
+
+  // 正文只写了"标段划分里有一个监理标段"，无法证明本条就是那个标段。
+  const ambiguous = build("某某光伏项目第一标段招标公告", "标段划分：本项目共三个标段，其中工程总承包一个标段、监理一个标段。");
+  assert.ok(ambiguous);
+  assert.equal(ambiguous.supervisionConfidence, "loose");
+  assert.equal(ambiguous.ambiguousSection, true);
+  assert.ok(ambiguous.pendingFields.includes("监理标段范围"));
+});
+
+test("the supervision gate never drops a monitoring notice on body text alone", () => {
+  // 监理公告的招标范围经常在描述"被监理的施工内容"，不能据此排除。
+  const scope = supervisionScope(
+    "原阳县雨污水管网及污水提升泵站新建工程1标段、2标段、3标段",
+    "[公开招标] [监理] 招标范围： 1标段：工程量清单及施工图纸所含的全部施工工作内容；",
+  );
+  assert.equal(scope.included, true);
+  assert.equal(scope.confidence, "loose");
+});
+
+test("announcements of the same project collapse into one row", () => {
+  const lot = (section, url, extra = {}) => ({
+    name: "杞县铝型材产业基地标准化厂房 20MWP 屋顶分布式光伏项目",
+    section,
+    originalTitle: `杞县铝型材产业基地标准化厂房20MWP屋顶分布式光伏项目${section}招标公告`,
+    tenderNumber: "HNGKZB-2026-056",
+    supervisionConfidence: "loose",
+    ambiguousSection: true,
+    publishedAt: "2026-08-17 00:00",
+    url,
+    ...extra,
+  });
+  const collapsed = collapseDuplicates([
+    lot("第一标段", "https://www.kfsggzyjyw.cn/jzbqx/81932.jhtml"),
+    lot("第二标段", "https://www.kfsggzyjyw.cn/jzbqx/81933.jhtml"),
+    lot("第三标段", "https://www.kfsggzyjyw.cn/jzbqx/81934.jhtml"),
+  ], new Date("2026-08-21T00:00:00+08:00"));
+
+  assert.equal(collapsed.length, 1);
+  assert.equal(collapsed[0].section, "标段待核验");
+  assert.equal(collapsed[0].relatedAnnouncements.length, 2);
+  assert.equal(collapsed[0].related.type, "同项目多标段");
+
+  // 已确认的监理标段存在时，其余标段不再单独占一行。
+  const withConfirmed = collapseDuplicates([
+    lot("第一标段", "https://www.kfsggzyjyw.cn/jzbqx/81932.jhtml"),
+    lot("第二标段", "https://www.kfsggzyjyw.cn/jzbqx/81933.jhtml", { supervisionConfidence: "explicit", ambiguousSection: false }),
+  ], new Date("2026-08-21T00:00:00+08:00"));
+  assert.equal(withConfirmed.length, 1);
+  assert.equal(withConfirmed[0].section, "第二标段");
+  assert.equal(withConfirmed[0].related.type, "同项目其他标段");
+});
+
+test("a re-tendered lot keeps the newest announcement and links the earlier one", () => {
+  const announcement = (url, publishedAt) => ({
+    name: "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目",
+    section: "监理标段",
+    originalTitle: "郑州航空工业管理学院航空港校区一期建设工程室外配套施工监理项目招标公告",
+    tenderNumber: "豫财招标采购-2026-866",
+    supervisionConfidence: "explicit",
+    ambiguousSection: false,
+    publishedAt,
+    url,
+  });
+  const collapsed = collapseDuplicates([
+    announcement("https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260722/first.html", "2026-07-22 09:53"),
+    announcement("https://hnsggzyjy.henan.gov.cn/jyxx/002001/002001001/20260814/second.html", "2026-08-14 11:28"),
+  ], new Date("2026-08-21T00:00:00+08:00"));
+
+  assert.equal(collapsed.length, 1);
+  assert.match(collapsed[0].url, /second\.html$/);
+  assert.equal(collapsed[0].related.type, "二次招标");
+  assert.equal(collapsed[0].relatedAnnouncements.length, 1);
+});
+
+test("field capture stops at the next label instead of truncating mid-word", () => {
+  const build = (body) => extractProject({
+    title: "某某工程监理标段招标公告",
+    html: body,
+    url: "https://www.kfsggzyjyw.cn/jzbqx/70001.jhtml",
+    publishedAt: "2026-08-17",
+    source,
+  }, new Date("2026-08-21T00:00:00+08:00"));
+
+  const numbered = build("<p>（ 1 ）项目名称：浉河区林下中草药经济建设项目 EPC 总承包及监理 （ 2 ）招标编号： A3205820001002866 （ 3 ）建设地点：河南省信阳市。</p>");
+  assert.equal(numbered.name, "浉河区林下中草药经济建设项目 EPC 总承包及监理");
+
+  const listed = build("<p>招标人：卢氏县宏图实业有限公司 2 . 项目名称： 卢氏县老灌河上游历史遗留废渣综合整治 EPC项目监理</p>");
+  assert.equal(listed.client, "卢氏县宏图实业有限公司");
+
+  // 找不到字段边界的超长值必须落到"待核验"，不能返回半个词。
+  const runaway = build(`<p>招标人：${"某某单位与".repeat(30)}</p>`);
+  assert.equal(runaway.client, "待核验");
+  assert.ok(runaway.pendingFields.includes("招标人"));
+});
+
+test("projects need a computable age to stay in the snapshot", () => {
+  const now = new Date("2026-08-21T00:00:00+08:00");
+  assert.equal(withinRetention({ publishedAt: "2026-08-01 09:00", discoveredAt: "2026-08-01 09:00" }, 90, now), true);
+  assert.equal(withinRetention({ publishedAt: "2026-01-01 09:00", discoveredAt: "2026-01-01 09:00" }, 90, now), false);
+  // 发布时间识别不出来时，用首次发现时间兜底，而不是永久保留。
+  assert.equal(withinRetention({ publishedAt: "待核验", discoveredAt: "2026-08-20 07:30" }, 90, now), true);
+  assert.equal(withinRetention({ publishedAt: "待核验", discoveredAt: "待核验" }, 90, now), false);
+});
+
+test("an unreadable announcement date is reported instead of silently accepted", () => {
+  const project = extractProject({
+    title: "某某工程监理标段招标公告",
+    html: "<p>招标范围：施工阶段监理服务。</p><p>招标人：某某单位</p>",
+    url: "https://www.kfsggzyjyw.cn/jzbqx/70002.jhtml",
+    publishedAt: "",
+    source,
+  }, new Date("2026-08-21T00:00:00+08:00"));
+  assert.equal(project.publishedAt, "待核验");
+  assert.ok(project.pendingFields.includes("公告发布时间"));
+});
+
 test("published snapshot stays live, source-bound and link-unique", async () => {
   const snapshot = JSON.parse(await readFile(new URL("../public/data/radar.json", import.meta.url), "utf8"));
   const configured = new Map(SOURCE_DEFINITIONS.map((source) => [source.name, new URL(source.entry).hostname.replace(/^www\./, "")]));
   assert.equal(snapshot.mode, "live");
   assert.deepEqual(snapshot.sources.map((source) => source.name), SOURCE_DEFINITIONS.map((source) => source.name));
   assert.equal(new Set(snapshot.projects.map((project) => project.originalUrl)).size, snapshot.projects.length);
+  assert.equal(new Set(snapshot.projects.map(projectIdentity)).size, snapshot.projects.length, "同一项目编号与标段只能出现一次");
   assert.equal(snapshot.projects.some((project) => /政府采购网|河南兴达/.test(project.source)), false);
   for (const project of snapshot.projects) {
     assert.equal(new URL(project.originalUrl).hostname.replace(/^www\./, ""), configured.get(project.source));
-    assert.match(`${project.section} ${project.category}`, /监理/);
+    const scope = supervisionScope(project.originalTitle, project.summary);
+    assert.ok(scope.included || scope.confidence !== "explicit", `${project.originalTitle} 的标题已写明本标段不是监理标段`);
+    assert.ok(["explicit", "scoped", "loose"].includes(project.supervisionConfidence), project.originalTitle);
     assert.ok(["confirmed", "document_required", "pending"].includes(project.bidDeadlineStatus));
     assert.equal(project.deadline, project.bidDeadline);
     assert.ok(Object.hasOwn(project, "bidDeadlineEvidence"));
@@ -331,24 +679,32 @@ test("published snapshot stays live, source-bound and link-unique", async () => 
     assert.ok(Object.hasOwn(project, "documentAcquireDeadline"));
   }
   assert.equal(snapshot.summary.newProjectCount, snapshot.projects.filter((project) => project.createdToday).length);
-  for (const summaryProject of snapshot.summary.earliestProjects) {
+  assert.equal(snapshot.schemaVersion, 4);
+  assert.equal(snapshot.storage.contractVersion, 4);
+  assert.equal(snapshot.summary.summaryVersion, 2);
+  assert.equal(Object.hasOwn(snapshot.summary, "expiringWithin3DaysCount"), false);
+  assert.equal(snapshot.summaries.every((summary) => [1, 2].includes(summary.summaryVersion)), true);
+  for (const summary of snapshot.summaries.filter((item) => item.summaryVersion === 2)) {
+    assert.equal(Object.hasOwn(summary, "expiringWithin3DaysCount"), false);
+  }
+  for (const summaryProject of [...snapshot.summary.urgentProjects, ...snapshot.summary.reminderProjects]) {
     const project = snapshot.projects.find((item) => item.id === summaryProject.projectId);
     assert.equal(project?.bidDeadlineStatus, "confirmed");
-    assert.equal(summaryProject.deadline, project?.bidDeadline);
+    assert.equal(summaryProject.bidDeadline, project?.bidDeadline);
   }
 
-  const reviewed = [
-    ["西平县乡村振兴肉牛产业融合发展建设项目", "2026-06-16 08:00", "2026-06-23 18:00"],
-    ["正阳县慎南路", "2026-05-14 08:00", "2026-05-20 18:00"],
-  ];
-  for (const [name, start, end] of reviewed) {
-    const project = snapshot.projects.find((item) => item.name.includes(name));
-    assert.ok(project, name);
-    assert.equal(project.bidDeadline, null);
-    assert.equal(project.bidDeadlineStatus, "document_required");
-    assert.match(project.bidDeadlineEvidence, /见招标文件/);
-    assert.equal(project.documentAcquireStart, start);
-    assert.equal(project.documentAcquireDeadline, end);
-    assert.equal(project.deadlineState, "pending");
+  // 不再断言某几条线上公告必须存在。它们会随来源下架或 90 天保留期到期而消失，
+  // 届时失败的是测试而不是产品，而这两个测试位于 pnpm build:pages 的部署链路上。
+  // 改为断言规则：快照中出现的每一条 document_required 项目都必须满足
+  // “投标截止时间与招标文件获取窗口分离”的契约。
+  // 这两条公告本身的完整字段由本文件的 fixture 单测
+  // "keeps the two reviewed document-acquisition windows separate from bid deadlines" 覆盖，不依赖线上数据。
+  const documentRequired = snapshot.projects.filter((project) => project.bidDeadlineStatus === "document_required");
+  for (const project of documentRequired) {
+    assert.equal(project.bidDeadline, null, project.name);
+    assert.equal(project.deadline, null, project.name);
+    assert.match(project.bidDeadlineEvidence, /(?:详?见|以)[^。；;]{0,40}招标文件/, project.name);
+    assert.equal(project.bidDeadlineVerifiedAt, null, project.name);
+    assert.equal(project.deadlineState, "pending", project.name);
   }
 });

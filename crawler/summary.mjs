@@ -1,25 +1,28 @@
+import { classifyBidDeadline } from "../shared/project-time.mjs";
+
 export function buildSummary(projects, run, now = new Date(), partialSourceCount = 0) {
-  const expiring = projects
+  const classified = projects
     .filter((project) => project.bidDeadlineStatus === "confirmed" && project.bidDeadline)
-    .filter((project) => {
-      const deadline = new Date(`${project.bidDeadline.replace(" ", "T")}:00+08:00`);
-      const diff = deadline.getTime() - now.getTime();
-      return Number.isFinite(diff) && diff > 0 && diff <= 3 * 86_400_000;
-    })
-    .sort((a, b) => a.bidDeadline.localeCompare(b.bidDeadline));
+    .map((project) => ({ project, deadlineState: classifyBidDeadline(project.bidDeadline, project.bidDeadlineStatus, now).deadlineState }))
+    .sort((a, b) => a.project.bidDeadline.localeCompare(b.project.bidDeadline));
+  const urgent = classified.filter((item) => item.deadlineState === "urgent").map((item) => item.project);
+  const reminder = classified.filter((item) => item.deadlineState === "reminder").map((item) => item.project);
+  const summarizeProject = (project) => ({
+    projectId: project.id,
+    name: project.name,
+    section: project.section,
+    bidDeadline: project.bidDeadline,
+  });
 
   return {
+    summaryVersion: 2,
     date: run.date,
-    generatedAt: run.finishedAt,
+    generatedAt: now.toISOString(),
     newProjectCount: projects.filter((project) => project.discoveredAt?.slice(0, 10) === run.date).length,
-    expiringWithin3DaysCount: expiring.length,
-    earliestProjects: expiring.slice(0, 3).map((project) => ({
-      projectId: project.id,
-      name: project.name,
-      section: project.section,
-      bidDeadline: project.bidDeadline,
-      deadline: project.bidDeadline,
-    })),
+    urgentWithin7DaysCount: urgent.length,
+    reminderFrom8To14DaysCount: reminder.length,
+    urgentProjects: urgent.slice(0, 3).map(summarizeProject),
+    reminderProjects: reminder.slice(0, 3).map(summarizeProject),
     abnormalSourceCount: run.sourceCount - run.succeededSources + partialSourceCount,
   };
 }

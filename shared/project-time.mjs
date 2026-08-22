@@ -1,9 +1,35 @@
 export const BID_DEADLINE_STATUSES = ["confirmed", "document_required", "pending"];
+export const DAY_MS = 86_400_000;
+export const URGENT_LIMIT_MS = 7 * DAY_MS;
+export const REMINDER_LIMIT_MS = 14 * DAY_MS;
 
-function chinaInstant(value) {
+export function parseChinaDateTime(value) {
   if (!value || typeof value !== "string") return null;
   const instant = new Date(`${value.replace(" ", "T")}:00+08:00`);
   return Number.isFinite(instant.getTime()) ? instant : null;
+}
+
+export function classifyBidDeadline(bidDeadline, bidDeadlineStatus, now = new Date()) {
+  const status = BID_DEADLINE_STATUSES.includes(bidDeadlineStatus)
+    ? bidDeadlineStatus
+    : bidDeadline
+      ? "confirmed"
+      : "pending";
+
+  if (status !== "confirmed" || !bidDeadline) {
+    return { deadlineState: "pending", remainingDays: null };
+  }
+
+  const instant = parseChinaDateTime(bidDeadline);
+  if (!instant) return { deadlineState: "pending", remainingDays: null };
+
+  const diff = instant.getTime() - now.getTime();
+  if (diff <= 0) return { deadlineState: "expired", remainingDays: 0 };
+
+  const remainingDays = Math.ceil(diff / DAY_MS);
+  if (diff <= URGENT_LIMIT_MS) return { deadlineState: "urgent", remainingDays };
+  if (diff <= REMINDER_LIMIT_MS) return { deadlineState: "reminder", remainingDays };
+  return { deadlineState: "normal", remainingDays };
 }
 
 export function bidDeadlinePresentation(bidDeadline, bidDeadlineStatus, now = new Date()) {
@@ -28,21 +54,31 @@ export function bidDeadlinePresentation(bidDeadline, bidDeadlineStatus, now = ne
     };
   }
 
-  const instant = chinaInstant(bidDeadline);
   const deadlineShort = `${bidDeadline.slice(5, 7)}月${bidDeadline.slice(8, 10)}日 ${bidDeadline.slice(11, 16)}`;
-  if (!instant) return { deadlineShort: "待核验", remaining: "时间无法可靠识别", deadlineState: "pending" };
-  const diff = instant.getTime() - now.getTime();
-  if (diff <= 0) return { deadlineShort, remaining: "已截止", deadlineState: "expired" };
-  const days = Math.ceil(diff / 86_400_000);
-  if (days <= 1) return { deadlineShort, remaining: "剩余 1 天", deadlineState: "danger" };
-  if (days <= 3) return { deadlineShort, remaining: `剩余 ${days} 天`, deadlineState: "warning" };
-  return { deadlineShort, remaining: `剩余 ${days} 天`, deadlineState: "normal" };
+  const classification = classifyBidDeadline(bidDeadline, status, now);
+  if (classification.deadlineState === "pending") {
+    return { deadlineShort: "待核验", remaining: "时间无法可靠识别", deadlineState: "pending" };
+  }
+  if (classification.deadlineState === "expired") {
+    return { deadlineShort, remaining: "已截止", deadlineState: "expired" };
+  }
+  const prefix = classification.deadlineState === "urgent"
+    ? "紧急"
+    : classification.deadlineState === "reminder"
+      ? "提醒"
+      : null;
+  const remaining = `剩余 ${classification.remainingDays} 天`;
+  return {
+    deadlineShort,
+    remaining: prefix ? `${prefix} · ${remaining}` : remaining,
+    deadlineState: classification.deadlineState,
+  };
 }
 
 export function documentAcquirePresentation(start, deadline, now = new Date()) {
   if (!start && !deadline) return null;
-  const startInstant = chinaInstant(start);
-  const deadlineInstant = chinaInstant(deadline);
+  const startInstant = parseChinaDateTime(start);
+  const deadlineInstant = parseChinaDateTime(deadline);
   let status = "pending";
   let label = "时间待核验";
 
