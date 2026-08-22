@@ -142,16 +142,87 @@ export function isSupervisionText(text) {
   return /(?:工程|施工|项目|标段|全过程)[^。；\n]{0,28}监理|监理(?:服务|标段|招标|采购|项目|工程)/.test(flattenText(text));
 }
 
+const SECTION_LABEL = "(?:第[一二三四五六七八九十\\d]+标段|[一二三四五六七八九十\\d]+标段|标段[一二三四五六七八九十\\d]+)";
+const SUPERVISION_SCOPE = /监理|全过程工程咨询|全过程咨询/;
+const OTHER_SCOPE = /EPC|工程总承包|设计施工总承包|施工总承包|总承包|施工|土建|安装|勘察|设计|检测|试验|造价|监测|设备采购|货物采购/;
+const SCOPE_LABELS = ["本标段招标范围", "本标段的招标范围", "本次招标范围", "本标段招标内容", "招标范围", "招标内容"];
+
+function scopeFromTitle(title) {
+  const labelled = new RegExp(`${SECTION_LABEL}\\s*[：:]\\s*([^）)】\\]，,。；;]{1,30})`).exec(title);
+  if (labelled) {
+    const scope = labelled[1];
+    if (SUPERVISION_SCOPE.test(scope)) return { included: true, confidence: "explicit", evidence: labelled[0] };
+    if (OTHER_SCOPE.test(scope)) return { included: false, confidence: "explicit", evidence: labelled[0] };
+  }
+  const direct = /监理标段|标段\s*[：:（(]\s*监理|[（(]\s*监理\s*[）)]/.exec(title);
+  if (direct) return { included: true, confidence: "explicit", evidence: direct[0] };
+  return null;
+}
+
+// 正文只用来做"正向"确认。招标范围段落里没写监理，不代表这一条不是监理公告——
+// 监理公告的招标范围常常在描述被监理的施工内容，据此排除会误杀真实项目。
+// 排除只发生在标题已明确写出本标段范围时（见 scopeFromTitle）。
+function scopeFromBody(text) {
+  for (const label of SCOPE_LABELS) {
+    let index = text.indexOf(label);
+    while (index >= 0) {
+      const separator = text.slice(index + label.length, index + label.length + 3);
+      const precededByHeading = /概况[与和]$/.test(text.slice(Math.max(0, index - 4), index));
+      if (/[：:]/.test(separator) && !precededByHeading) {
+        const window = text.slice(index, index + 220);
+        if (SUPERVISION_SCOPE.test(window)) return { included: true, confidence: "scoped", evidence: window.slice(0, 140) };
+      }
+      index = text.indexOf(label, index + label.length);
+    }
+  }
+  return null;
+}
+
+// 判断"这一条公告对应的标段"是不是监理标段，而不是整篇公告里有没有出现"监理"。
+// 同一项目的 EPC、施工、检测标段各自单独发公告，正文却都会写到监理标段的存在。
+export function supervisionScope(title = "", text = "") {
+  const flatTitle = flattenText(title);
+  const flatText = flattenText(text);
+  return scopeFromTitle(flatTitle)
+    || scopeFromBody(flatText)
+    || { included: isSupervisionText(`${flatTitle} ${flatText}`), confidence: "loose", evidence: null };
+}
+
+export function extractTenderNumber(text) {
+  const value = flattenText(text)
+    .match(/(?:招标|项目|采购|询价|磋商)编号\s*[：:]\s*([A-Za-z0-9\u4e00-\u9fa5][A-Za-z0-9\u4e00-\u9fa5\-_/（）()]{4,40})/)?.[1];
+  return value ? value.replace(/[，,。；;]$/, "").trim() : null;
+}
+
+function normalizeIdentityText(value = "") {
+  return String(value).replace(/[^\p{Script=Han}a-zA-Z0-9]/gu, "").toLowerCase();
+}
+
+// 去重键：优先"项目编号 + 标段"，没有编号时退回"项目名称 + 标段"。
+export function projectIdentity(project) {
+  const section = normalizeIdentityText(project.section) || "未标注标段";
+  const number = project.tenderNumber ? normalizeIdentityText(project.tenderNumber) : "";
+  return number ? `${number}|${section}` : `${normalizeIdentityText(project.name)}|${section}`;
+}
+
+// 公告正文里字段之间常常只靠"（2）""3、""某某："分隔。捕获到下一个字段的开头就必须截断，
+// 否则项目名会把招标编号、建设地点一起吃进来。
+function truncateAtNextLabel(value) {
+  const boundary = value.search(/[（(]\s*\d+\s*[）)]|\s\d+\s*[、.．]|\s*[一二三四五六七八九十]\s*、|[^：:\s]{2,10}\s*[：:]/);
+  return boundary > 0 ? value.slice(0, boundary) : value;
+}
+
 function captureLabel(text, labels, maxLength = 100) {
   for (const label of labels) {
-    const pattern = new RegExp(`${label}(?:名称)?(?:\\s*[：:]|\\s*为\\s*[：:]?)\\s*([^\\n，；;。]{2,${maxLength}})`);
+    const pattern = new RegExp(`${label}(?:名称)?(?:\\s*[：:]|\\s*为\\s*[：:]?)\\s*([^\\n，；;。]{2,${maxLength + 60}})`);
     const value = text.match(pattern)?.[1]?.trim();
-    if (value) {
-      return value
-        .replace(/\s*(?:投资总额|总投资|资金来源|建设资金|项目概况|招标范围|招标代理机构|采购代理机构|地址|地 址|项目负责人|联系人|电 话|监督单位|监管部门)\s*[：:]?.*$/, "")
-        .replace(/\s*(?:2\.|二、|三、).*$/, "")
-        .trim();
-    }
+    if (!value) continue;
+    const cleaned = truncateAtNextLabel(value)
+      .replace(/\s*(?:投资总额|总投资|资金来源|建设资金|项目概况|招标范围|招标代理机构|采购代理机构|地址|地 址|项目负责人|联系人|电 话|监督单位|监管部门)\s*[：:]?.*$/, "")
+      .replace(/\s*(?:2\.|二、|三、).*$/, "")
+      .trim();
+    // 超长说明没有找到字段边界，宁可交给"待核验"，也不返回半截值。
+    if (cleaned.length >= 2 && cleaned.length <= maxLength) return cleaned;
   }
   return "";
 }
@@ -362,6 +433,104 @@ export function projectFingerprint(project) {
     .digest("hex");
 }
 
+function publishedKey(project) {
+  return String(project.publishedAt).match(/20\d{2}-\d{2}-\d{2}( \d{2}:\d{2})?/)?.[0] || "";
+}
+
+function pickPrimary(items) {
+  return [...items].sort((a, b) => publishedKey(b).localeCompare(publishedKey(a)) || a.url.localeCompare(b.url))[0];
+}
+
+function attachRelated(primary, others, type, title, now) {
+  if (!others.length) return primary;
+  return {
+    ...primary,
+    related: primary.related || {
+      type,
+      title,
+      date: formatChinaTime(now).slice(0, 16),
+    },
+    relatedAnnouncements: others.map((item) => ({
+      title: item.originalTitle,
+      section: item.section,
+      publishedAt: item.publishedAt,
+      url: item.url,
+    })),
+  };
+}
+
+// 公共资源交易中心按"一标段一公告"发布，同一项目的多个标段 URL 天然不同。
+// 只按 URL 去重会让同一项目在列表里重复出现，因此这里补上 PRD 第五步要求的第二级去重。
+export function collapseDuplicates(projects, now = new Date()) {
+  const byIdentity = new Map();
+  for (const project of projects) {
+    const key = projectIdentity(project);
+    byIdentity.set(key, [...(byIdentity.get(key) || []), project]);
+  }
+
+  const deduped = [];
+  for (const bucket of byIdentity.values()) {
+    if (bucket.length === 1) {
+      deduped.push(bucket[0]);
+      continue;
+    }
+    const primary = pickPrimary(bucket);
+    const others = bucket.filter((item) => item !== primary);
+    const reissue = others.some((item) => publishedKey(item) && publishedKey(item) < publishedKey(primary));
+    deduped.push(attachRelated(
+      primary,
+      others,
+      reissue ? "二次招标" : "重复公告",
+      reissue
+        ? `该标段此前已发布过招标公告，本条为最新一次（另有 ${others.length} 条历史公告）`
+        : `同一标段在来源站有 ${others.length} 条重复公告，已合并展示`,
+      now,
+    ));
+  }
+
+  const byTender = new Map();
+  for (const project of deduped) {
+    if (!project.tenderNumber) continue;
+    byTender.set(project.tenderNumber, [...(byTender.get(project.tenderNumber) || []), project]);
+  }
+
+  const dropped = new Set();
+  const rewritten = new Map();
+  for (const bucket of byTender.values()) {
+    if (bucket.length < 2) continue;
+    const confident = bucket.filter((item) => item.supervisionConfidence !== "loose");
+    const ambiguous = bucket.filter((item) => item.ambiguousSection);
+    if (confident.length && ambiguous.length) {
+      for (const item of ambiguous) dropped.add(item.url);
+      rewritten.set(confident[0].url, attachRelated(
+        confident[0],
+        ambiguous,
+        "同项目其他标段",
+        `该项目另有 ${ambiguous.length} 个标段公告，本条是已确认的监理标段`,
+        now,
+      ));
+      continue;
+    }
+    if (ambiguous.length === bucket.length && bucket.length > 1) {
+      const primary = pickPrimary(bucket);
+      const others = bucket.filter((item) => item !== primary);
+      for (const item of others) dropped.add(item.url);
+      const merged = attachRelated(
+        primary,
+        others,
+        "同项目多标段",
+        `该项目共 ${bucket.length} 条标段公告，尚未确认哪一个是监理标段`,
+        now,
+      );
+      rewritten.set(primary.url, { ...merged, section: "标段待核验" });
+    }
+  }
+
+  return deduped
+    .filter((project) => !dropped.has(project.url))
+    .map((project) => rewritten.get(project.url) || project);
+}
+
 export function formatChinaTime(date = new Date()) {
   return new Intl.DateTimeFormat("zh-CN", {
     timeZone: "Asia/Shanghai",
@@ -407,7 +576,9 @@ export function retainProjectWithLatestLinkState(project, source) {
 
 export function extractProject({ title, html, text: providedText, url, publishedAt, source, originalAvailable = true, linkFailureReason = null }, now = new Date()) {
   const text = flattenText(html || providedText);
-  if (!isSupervisionText(`${title} ${text}`)) return null;
+  const scope = supervisionScope(title, text);
+  if (!scope.included) return null;
+  const ambiguousSection = scope.confidence === "loose" && /第[一二三四五六七八九十\d]+标段/.test(title);
   const timeFields = extractTimeFields(text, normalizePublishedAt(publishedAt));
   const presentation = deadlinePresentation(timeFields.bidDeadline, now, timeFields.bidDeadlineStatus);
   const agencyFromDelegation = text.match(/(?:现)?委托\s*([^，。；;]{2,80}(?:有限公司|事务所))/)?.[1]?.trim();
@@ -416,6 +587,10 @@ export function extractProject({ title, html, text: providedText, url, published
     name: cleanProjectName(title, text),
     section: extractSection(title, text),
     category: inferCategory(`${title} ${text}`),
+    tenderNumber: extractTenderNumber(text),
+    supervisionConfidence: scope.confidence,
+    supervisionEvidence: scope.evidence,
+    ambiguousSection,
     investment: extractInvestment(text),
     ...timeFields,
     bidDeadlineVerifiedAt: timeFields.bidDeadlineStatus === "confirmed" ? formatChinaTime(now).slice(0, 16) : null,
@@ -441,6 +616,8 @@ export function extractProject({ title, html, text: providedText, url, published
     createdToday: normalizePublishedAt(publishedAt).slice(0, 10) === chinaDateKey(now),
     pendingFields: [],
   };
+  if (project.publishedAt === "待核验") project.pendingFields.push("公告发布时间");
+  if (ambiguousSection) project.pendingFields.push("监理标段范围");
   if (timeFields.bidDeadlineStatus !== "confirmed") project.pendingFields.push("投标截止时间");
   if (project.investment === "待核验") project.pendingFields.push("总投资");
   if (project.client === "待核验") project.pendingFields.push("招标人");
@@ -456,6 +633,15 @@ function normalizePublishedAt(value = "") {
   const [date, time = "00:00"] = match[0].replaceAll("/", "-").split(/\s+/);
   const [year, month, day] = date.split("-");
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")} ${time.slice(0, 5)}`;
+}
+
+// 列表页阶段无法解析发布日期时只能放行，否则会漏掉真实项目；
+// 但项目一旦进入快照，就必须有一个可计算的年龄，避免"永不过期"的条目常驻列表。
+export function withinRetention(project, days, now = new Date()) {
+  const stamp = String(project.publishedAt).match(/20\d{2}-\d{2}-\d{2}/)?.[0]
+    || String(project.discoveredAt).match(/20\d{2}-\d{2}-\d{2}/)?.[0];
+  if (!stamp) return false;
+  return now.getTime() - new Date(`${stamp}T00:00:00+08:00`).getTime() <= days * 86_400_000;
 }
 
 export function withinDays(publishedAt, days, now = new Date()) {

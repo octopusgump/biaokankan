@@ -59,15 +59,17 @@ function validateSnapshot(value) {
   if (!value || typeof value !== "object") throw new Error("雷达快照必须是对象");
   if (!Array.isArray(value.projects) || !Array.isArray(value.sources)) throw new Error("雷达快照缺少 projects 或 sources 数组");
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     mode: "live",
     generatedAt: value.generatedAt || null,
-    storage: value.storage || { driver: "json", contractVersion: 1 },
+    storage: { ...(value.storage || { driver: "json" }), contractVersion: 4 },
     projects: value.projects.map((project) => normalizeProjectTimeFields(project)),
     sources: value.sources,
     run: value.run || null,
-    summary: value.summary || null,
-    summaries: Array.isArray(value.summaries) ? value.summaries.slice(0, 30) : [],
+    summary: value.summary ? { summaryVersion: value.summary.summaryVersion || 1, ...value.summary } : null,
+    summaries: Array.isArray(value.summaries)
+      ? value.summaries.slice(0, 30).map((summary) => ({ summaryVersion: summary.summaryVersion || 1, ...summary }))
+      : [],
     runs: Array.isArray(value.runs) ? value.runs.slice(0, 30) : [],
     errors: Array.isArray(value.errors) ? value.errors.slice(0, 100) : [],
   };

@@ -179,7 +179,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .summary-grid {
   margin-bottom: 14px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--hairline);
@@ -233,7 +233,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   letter-spacing: -.025em;
 }
 .summary-grid small { grid-area: meta; color: var(--subtle); font-size: 11px; }
-.summary-grid .warning small { color: var(--warning); }
+.summary-grid .urgent small { color: var(--danger); }
+.summary-grid .reminder small { color: var(--warning); }
 
 .project-panel, .panel-card, .detail-card {
   border: 1px solid var(--hairline);
@@ -495,11 +496,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .time-kind { display: block; margin-bottom: 3px; color: var(--subtle); font-size: 10px; font-weight: 600; letter-spacing: .03em; }
 .deadline-copy strong { color: var(--ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .deadline-copy small { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.35; }
-.deadline-block.warning .deadline-dot { background: var(--warning); }
-.deadline-block.warning .deadline-copy small { color: var(--ink-soft); font-weight: 600; }
-.deadline-block.danger .deadline-dot { background: var(--danger); }
-.deadline-block.danger .deadline-copy strong { font-weight: 650; }
-.deadline-block.danger .deadline-copy small { color: var(--ink-soft); font-weight: 600; }
+.deadline-block.reminder .deadline-dot { background: var(--warning); }
+.deadline-block.reminder .deadline-copy small { color: var(--warning); font-weight: 600; }
+.deadline-block.urgent .deadline-dot { background: var(--danger); }
+.deadline-block.urgent .deadline-copy strong { font-weight: 650; }
+.deadline-block.urgent .deadline-copy small { color: var(--danger); font-weight: 600; }
 .deadline-block.expired { opacity: .56; }
 .deadline-block.expired .deadline-dot { background: #8e8e93; }
 .deadline-block.pending .deadline-dot { border: 1.5px solid #8e8e93; background: transparent; }
@@ -680,8 +681,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .detail-deadline .document-acquire strong { color: #fff; font-size: 15px; }
 .detail-deadline .document-acquire small { color: #ccc; }
 .detail-deadline .document-acquire.ended { opacity: .72; }
-.detail-deadline .deadline-block.warning .deadline-copy small,
-.detail-deadline .deadline-block.danger .deadline-copy small { color: #ddd; }
+.detail-deadline .deadline-block.reminder .deadline-copy small,
+.detail-deadline .deadline-block.urgent .deadline-copy small { color: #ddd; }
 .detail-deadline .deadline-block.pending .deadline-copy strong,
 .detail-deadline .deadline-block.pending .deadline-copy small { color: #aaa; }
 .verify-alert, .update-alert {
@@ -1267,8 +1268,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .topbar h1 { font-size: 34px; }
   .subtitle { font-size: 17px; }
   .scan-status { display: none; }
-  .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .summary-grid > button { min-height: 70px; padding: 11px 13px; gap: 2px 8px; }
+  .summary-grid > button:nth-child(odd) { border-left: 0; }
+  .summary-grid > button:nth-child(n+3) { border-top: 1px solid var(--hairline); }
   .summary-grid > button.selected::after { left: 13px; right: 13px; }
   .filters { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; }
   .search-box { grid-column: 1 / -1; width: 100%; min-width: 0; }
@@ -1457,7 +1460,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @media (prefers-reduced-motion: no-preference) {
   .update-indicator i { animation: update-attention 760ms var(--ease-ui) 2; }
-  .deadline-block.danger .deadline-dot { animation: deadline-attention 560ms var(--ease-ui) 1 120ms; }
+  .deadline-block.urgent .deadline-dot { animation: deadline-attention 560ms var(--ease-ui) 1 120ms; }
 }
 
 /* Unified black-blue public workbench */
@@ -1682,8 +1685,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .preview-project-copy small { display: block; }
 .preview-deadline b { color: var(--ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
 .preview-deadline small { margin-top: 4px; color: var(--muted); font-size: 12px; }
-.preview-deadline.warning small { color: var(--warning); }
-.preview-deadline.danger small { color: var(--danger); }
+.preview-deadline.reminder small { color: var(--warning); }
+.preview-deadline.urgent small { color: var(--danger); }
 .preview-deadline.pending small { color: var(--pending); }
 .preview-project-copy strong {
   overflow: hidden;
