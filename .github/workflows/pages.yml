@@ -48,7 +48,12 @@ jobs:
           TENDER_SNAPSHOT_BACKUP: ${{ runner.temp }}/radar-before-crawl.json
         shell: bash
         run: |
-          node -e 'const fs = require("node:fs"); const target = "public/data/radar.json"; let valid = false; try { const snapshot = JSON.parse(fs.readFileSync(target, "utf8")); valid = snapshot.run?.status === "成功" && snapshot.run?.succeededSources === snapshot.run?.sourceCount; } catch {} if (!valid) { fs.copyFileSync(process.env.TENDER_SNAPSHOT_BACKUP, target); console.log("本次扫描未全部成功，继续验证上一份完整快照"); }'
+          if node scripts/verify-snapshot.mjs public/data/radar.json "$TENDER_SNAPSHOT_BACKUP"; then
+            echo "本次扫描通过快照门禁，发布新数据"
+          else
+            cp "$TENDER_SNAPSHOT_BACKUP" public/data/radar.json
+            echo "本次扫描未通过快照门禁，继续验证上一份完整快照"
+          fi
 
       - name: Build encrypted static site
         env:
