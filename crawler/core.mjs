@@ -588,7 +588,9 @@ export function projectFingerprint(project) {
       project.section,
       project.investment,
       project.bidDeadline ?? project.deadline,
-      project.bidDeadlineStatus,
+      // bidDeadlineStale 拼进 status 而不是新增一段，是为了让「未沿用旧值」的项目
+      // 指纹与升级前完全一致——否则上线后 60 多个项目会集体被误判成「内容更新」。
+      `${project.bidDeadlineStatus}${project.bidDeadlineStale ? "-stale" : ""}`,
       project.bidDeadlineEvidence,
       project.documentAcquireStart,
       project.documentAcquireDeadline,

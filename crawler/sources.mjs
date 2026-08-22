@@ -225,6 +225,27 @@ export const SOURCE_DEFINITIONS = [
   },
 ];
 
+// 上游改版后列表页选择器失效时，generic-html 系适配器不会抛错，只会安静地返回 0 条，
+// run 里就被记成「成功 + 0 条」，该来源的历史项目随之被整批删掉。
+// 代码路径上分不清「本期确实没有监理项目」和「适配器已挂」，所以宁可告警：
+// 读到的条数低于最低预期就写一条 issue，让该来源落进「部分失败」并保住历史。
+// 确实长期没有监理公告的来源，可以在 SOURCE_DEFINITIONS 里声明 minExpectedEntries: 0 退出该检查。
+export const DEFAULT_MIN_EXPECTED_ENTRIES = 1;
+
+export function lowEntryIssue(source, read) {
+  const minExpected = source?.minExpectedEntries ?? DEFAULT_MIN_EXPECTED_ENTRIES;
+  if (!(minExpected > 0)) return null;
+  const actual = Number.isFinite(Number(read)) ? Number(read) : 0;
+  if (actual >= minExpected) return null;
+  return {
+    level: "来源疑似失效",
+    url: source?.scanEntry || source?.listEntry || source?.entry,
+    title: `${source?.name ?? "未知来源"}公告列表`,
+    detail: `列表只读到 ${actual} 条监理公告，低于最低预期 ${minExpected} 条；无法区分「本期确实没有监理项目」与「上游改版导致适配器失效」`,
+    action: "人工打开列表页核对，必要时修复适配器或声明 minExpectedEntries",
+  };
+}
+
 export async function scanSource(source, now = new Date()) {
   let result;
   if (source.adapter === "epoint-search") result = await scanEpointSource(source, now);
